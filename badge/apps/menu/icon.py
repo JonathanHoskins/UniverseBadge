@@ -3,7 +3,7 @@ from badgeware import brushes, shapes, io, Matrix, screen
 
 # bright icon colours
 bold = [
-    brushes.color(211, 250, 55),
+    brushes.color(255, 239, 0),
     brushes.color(48, 148, 255),
     brushes.color(95, 237, 131),
     brushes.color(225, 46, 251),
@@ -14,7 +14,7 @@ bold = [
 # create faded out variants for inactive icons
 fade = 1.8
 faded = [
-    brushes.color(211 / fade, 250 / fade, 55 / fade),
+    brushes.color(255 / fade, 239 / fade, 0 / fade),
     brushes.color(48 / fade, 148 / fade, 255 / fade),
     brushes.color(95 / fade, 237 / fade, 131 / fade),
     brushes.color(225 / fade, 46 / fade, 251 / fade),
