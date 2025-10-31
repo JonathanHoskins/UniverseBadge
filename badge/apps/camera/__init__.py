@@ -260,10 +260,11 @@ def update():
             w, _ = screen.measure_text(text)
             screen.text(text, 80 - (w // 2), 105)
         
-        # Draw photo counter
+        # Draw photo counter (remaining shots)
         screen.font = large_font
-        screen.brush = brushes.color(211, 250, 55)
-        counter_text = f"{photo_count}/{FILM_CAPACITY}"
+        remaining = FILM_CAPACITY - photo_count
+        screen.brush = brushes.color(211, 250, 55) if remaining > 5 else brushes.color(255, 100, 100)
+        counter_text = f"{remaining} left"
         w, _ = screen.measure_text(counter_text)
         screen.text(counter_text, 80 - (w // 2), 5)
     
