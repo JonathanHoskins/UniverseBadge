@@ -53,6 +53,7 @@ def update():
         screen.font = small_font
         if int(io.ticks / 500) % 2:
             w, _ = screen.measure_text("Press B to return")
+            screen.brush = brushes.color(255, 255, 255)
             screen.text("Press B to return", 80 - (w / 2), 108)
 
         if io.BUTTON_B in io.pressed:

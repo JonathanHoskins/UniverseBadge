@@ -5,8 +5,8 @@ import os
 
 class DVDLogo:
     def __init__(self):
-        self.w = 42
-        self.h = 20
+        self.w = 48  # width
+        self.h = 24  # height (taller in middle)
         # use floats for smoother, slower motion
         self.x = float((screen.width - self.w) // 2)
         self.y = float((screen.height - self.h) // 2)
@@ -86,20 +86,36 @@ class DVDLogo:
         ry = int(round(self.y))
         rw = int(self.w)
         rh = int(self.h)
-        radius = 4
-
+        
+        # Draw perfect oval shape
         screen.brush = brushes.color(*self.color)
+        
+        # Main oval using maximum corner radius
+        radius = rh // 2  # half height for perfect oval ends
         screen.draw(shapes.rounded_rectangle(rx, ry, rw, rh, radius))
-
-        # draw a thin border (top and bottom as subtle strips)
+        
+        # Draw a thin border for depth
+        border_width = 2
         screen.brush = brushes.color(0, 0, 0)
-        screen.draw(shapes.rounded_rectangle(rx, ry, rw, 2, radius))
-        screen.draw(shapes.rounded_rectangle(rx, ry + rh - 2, rw, 2, radius))
+        screen.draw(shapes.rounded_rectangle(
+            rx,
+            ry,
+            rw,
+            border_width,
+            radius
+        ))
+        screen.draw(shapes.rounded_rectangle(
+            rx,
+            ry + rh - border_width,
+            rw,
+            border_width,
+            radius
+        ))
 
         # draw the text "DVD" centered inside
         # do not override font; calling module should set the font
         w, _ = screen.measure_text("DVD")
         tx = rx + (rw - w) // 2
-        ty = ry + (rh - 8) // 2
+        ty = ry + (rh - 8) // 2 - 2  # moved up slightly to fit in bat shape
         screen.brush = brushes.color(0, 0, 0)
         screen.text("DVD", tx, ty)
