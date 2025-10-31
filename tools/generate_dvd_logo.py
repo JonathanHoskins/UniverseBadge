@@ -94,3 +94,78 @@ di.text((tx, ty), text, font=ifont, fill=(255, 255, 255, 255))
 
 icon.save(icon_out)
 print(f"Wrote menu icon to {icon_out}")
+
+# Generate a 24px-tall monochrome globe icon for the hello app (icon.png)
+hello_out = Path(__file__).resolve().parents[1] / "badge" / "apps" / "hello" / "icon.png"
+GW, GH = 36, 24
+globe = Image.new("RGBA", (GW, GH), (0, 0, 0, 0))
+dg = ImageDraw.Draw(globe)
+
+white = (255, 255, 255, 255)
+pad = 2
+cx, cy = GW // 2, GH // 2
+r = min(GW, GH) // 2 - 3
+
+# Outer circle
+dg.ellipse([cx - r, cy - r, cx + r, cy + r], outline=white, width=2)
+
+# Equator (straight line)
+dg.line([(cx - (r - 2), cy), (cx + (r - 2), cy)], fill=white, width=1)
+
+# Latitudes (curved): draw two horizontal ellipses with reduced height
+for frac in (0.55, 0.25):
+    h = max(1, int(r * frac))
+    dg.ellipse([cx - r, cy - h, cx + r, cy + h], outline=white, width=1)
+
+# Longitudes (curved): draw two vertical ellipses with reduced width
+for frac in (0.55, 0.25):
+    w = max(1, int(r * frac))
+    dg.ellipse([cx - w, cy - r, cx + w, cy + r], outline=white, width=1)
+
+globe.save(hello_out)
+print(f"Wrote hello menu icon to {hello_out}")
+
+# (Removed text-based hello icon generation; globe icon above is the final output.)
+
+# Generate a 24px-tall monochrome camera icon for the camera app (icon.png)
+camera_out = Path(__file__).resolve().parents[1] / "badge" / "apps" / "camera" / "icon.png"
+CW, CH = 36, 24
+cam_icon = Image.new("RGBA", (CW, CH), (0, 0, 0, 0))
+dc = ImageDraw.Draw(cam_icon)
+
+white = (255, 255, 255, 255)
+
+# Camera body (main rectangle)
+body_x, body_y = 6, 8
+body_w, body_h = 24, 14
+dc.rectangle([body_x, body_y, body_x + body_w, body_y + body_h], outline=white, width=2)
+
+# Lens (circle on the left side of body)
+lens_cx = body_x + 8
+lens_cy = body_y + body_h // 2
+lens_r = 5
+dc.ellipse([lens_cx - lens_r, lens_cy - lens_r, lens_cx + lens_r, lens_cy + lens_r], outline=white, width=2)
+
+# Lens inner circle (aperture)
+inner_r = 3
+dc.ellipse([lens_cx - inner_r, lens_cy - inner_r, lens_cx + inner_r, lens_cy + inner_r], outline=white, width=1)
+
+# Viewfinder (small rectangle on top)
+vf_x = body_x + body_w - 8
+vf_y = body_y - 4
+vf_w, vf_h = 6, 4
+dc.rectangle([vf_x, vf_y, vf_x + vf_w, vf_y + vf_h], outline=white, width=1)
+
+# Flash (small rectangle on top left)
+flash_x = body_x + 2
+flash_y = body_y - 3
+flash_w, flash_h = 4, 3
+dc.rectangle([flash_x, flash_y, flash_x + flash_w, flash_y + flash_h], outline=white, width=1)
+
+# Shutter button (small circle on top right)
+shutter_x = body_x + body_w + 2
+shutter_y = body_y + 2
+dc.ellipse([shutter_x - 2, shutter_y - 2, shutter_x + 2, shutter_y + 2], fill=white)
+
+cam_icon.save(camera_out)
+print(f"Wrote camera menu icon to {camera_out}")
