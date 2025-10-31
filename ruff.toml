@@ -1,0 +1,11 @@
+# Ruff configuration for UniverseBadge
+# Exclude embedded/micropython code and hardware examples from linting to reduce false positives.
+exclude = [
+  "ir-beacon/**",
+  "eink/**",
+  # Generated or binary assets
+  "**/assets/**",
+  "images/**",
+]
+
+# You can customize rules later; keep defaults for now.
