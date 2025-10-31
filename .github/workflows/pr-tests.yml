@@ -37,5 +37,9 @@ jobs:
           echo "Running flake8..."
           flake8 .
 
-      - name: Run test checks script
+      - name: Run pytest
+        run: pytest -q
+
+      - name: Run test checks script (legacy)
+        if: always()
         run: python tests/run_checks.py
