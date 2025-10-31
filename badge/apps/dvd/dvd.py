@@ -74,32 +74,32 @@ class DVDLogo:
             try:
                 img = self.sprite.sprite(0, 0)
                 # center the sprite inside the logo bounds
-                sx = self.x + (self.w - img.width) // 2
-                sy = self.y + (self.h - img.height) // 2
+                sx = int(round(self.x + (self.w - img.width) / 2))
+                sy = int(round(self.y + (self.h - img.height) / 2))
                 screen.blit(img, sx, sy)
                 return
             except Exception:
                 # fall through to rectangle fallback
                 pass
-            # draw rounded rectangle fallback with a subtle border
-            rx = int(round(self.x))
-            ry = int(round(self.y))
-            rw = int(self.w)
-            rh = int(self.h)
-            radius = 4
+        # draw rounded rectangle fallback with a subtle border
+        rx = int(round(self.x))
+        ry = int(round(self.y))
+        rw = int(self.w)
+        rh = int(self.h)
+        radius = 4
 
-            screen.brush = brushes.color(*self.color)
-            screen.draw(shapes.rounded_rectangle(rx, ry, rw, rh, radius))
+        screen.brush = brushes.color(*self.color)
+        screen.draw(shapes.rounded_rectangle(rx, ry, rw, rh, radius))
 
-            # draw a thin border (top and bottom as subtle strips)
-            screen.brush = brushes.color(0, 0, 0)
-            screen.draw(shapes.rounded_rectangle(rx, ry, rw, 2, radius))
-            screen.draw(shapes.rounded_rectangle(rx, ry + rh - 2, rw, 2, radius))
+        # draw a thin border (top and bottom as subtle strips)
+        screen.brush = brushes.color(0, 0, 0)
+        screen.draw(shapes.rounded_rectangle(rx, ry, rw, 2, radius))
+        screen.draw(shapes.rounded_rectangle(rx, ry + rh - 2, rw, 2, radius))
 
-            # draw the text "DVD" centered inside
-            # do not override font; calling module should set the font
-            w, _ = screen.measure_text("DVD")
-            tx = rx + (rw - w) // 2
-            ty = ry + (rh - 8) // 2
-            screen.brush = brushes.color(0, 0, 0)
-            screen.text("DVD", tx, ty)
+        # draw the text "DVD" centered inside
+        # do not override font; calling module should set the font
+        w, _ = screen.measure_text("DVD")
+        tx = rx + (rw - w) // 2
+        ty = ry + (rh - 8) // 2
+        screen.brush = brushes.color(0, 0, 0)
+        screen.text("DVD", tx, ty)
