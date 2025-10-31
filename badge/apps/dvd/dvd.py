@@ -1,5 +1,6 @@
-from badgeware import screen, brushes, shapes, io
+from badgeware import screen, brushes, shapes, io, SpriteSheet, Image
 import random
+import os
 
 
 class DVDLogo:
@@ -12,6 +13,20 @@ class DVDLogo:
         self.dx = 1
         self.dy = 1
         self.color = (255, 0, 0)
+        # try to load a sprite-based logo (assets/dvd_logo.png) as a 1x1 spritesheet
+        self.sprite = None
+        try:
+            asset_path = os.path.join(os.getcwd(), "assets", "dvd_logo.png")
+            # prefer a local app asset first
+            if os.path.exists(asset_path):
+                self.sprite = SpriteSheet("assets/dvd_logo.png", 1, 1)
+            else:
+                # fallback to system asset if present
+                if os.path.exists("/system/assets/mona-sprites/mona-default.png"):
+                    self.sprite = SpriteSheet("/system/assets/mona-sprites/mona-default.png", 1, 1)
+        except Exception:
+            # if sprite loading fails, we'll just draw the rectangle/text fallback
+            self.sprite = None
 
     def update(self):
         # move
@@ -52,7 +67,19 @@ class DVDLogo:
             self.dy += random.choice([-1, 0, 1])
 
     def draw(self):
-        # draw rounded-ish rectangle
+        if self.sprite:
+            try:
+                img = self.sprite.sprite(0, 0)
+                # center the sprite inside the logo bounds
+                sx = self.x + (self.w - img.width) // 2
+                sy = self.y + (self.h - img.height) // 2
+                screen.blit(img, sx, sy)
+                return
+            except Exception:
+                # fall through to rectangle fallback
+                pass
+
+        # draw rounded-ish rectangle fallback
         screen.brush = brushes.color(*self.color)
         screen.draw(shapes.rectangle(self.x, self.y, self.w, self.h))
 
@@ -62,7 +89,7 @@ class DVDLogo:
         screen.draw(shapes.rectangle(self.x, self.y + self.h - 1, self.w, 1))
 
         # draw the text "DVD" centered inside
-        screen.font = None  # leave calling module to set font
+        # do not override font; calling module should set the font
         w, _ = screen.measure_text("DVD")
         tx = self.x + (self.w - w) // 2
         ty = self.y + (self.h - 8) // 2
