@@ -1,6 +1,6 @@
 from micropython import const
 import badger2040
-from badger2040 import UPDATE_NORMAL, UPDATE_MEDIUM, UPDATE_FAST, UPDATE_TURBO, BUTTON_A, BUTTON_B, BUTTON_C, BUTTON_DOWN, BUTTON_UP, WIDTH, HEIGHT
+from badger2040 import UPDATE_NORMAL, UPDATE_FAST, UPDATE_TURBO, BUTTON_A, BUTTON_B, BUTTON_C, BUTTON_DOWN, BUTTON_UP, WIDTH, HEIGHT
 from time import sleep
 import random
 import gc

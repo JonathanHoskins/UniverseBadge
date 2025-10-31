@@ -1,4 +1,4 @@
-from badgeware import screen, brushes, shapes, io, SpriteSheet, Image
+from badgeware import screen, brushes, shapes, SpriteSheet
 import random
 import os
 
