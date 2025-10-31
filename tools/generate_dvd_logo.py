@@ -103,74 +103,26 @@ dg = ImageDraw.Draw(globe)
 
 white = (255, 255, 255, 255)
 pad = 2
+cx, cy = GW // 2, GH // 2
+r = min(GW, GH) // 2 - 3
 
 # Outer circle
-dg.ellipse([pad, pad, GW - pad - 1, GH - pad - 1], outline=white, width=2)
+dg.ellipse([cx - r, cy - r, cx + r, cy + r], outline=white, width=2)
 
-# Horizontal latitude lines (top, middle, bottom-ish)
-mid_y = GH // 2
-dg.line([(pad + 3, mid_y), (GW - pad - 3, mid_y)], fill=white, width=2)
-dg.line([(pad + 5, mid_y - 5), (GW - pad - 5, mid_y - 5)], fill=white, width=2)
-dg.line([(pad + 5, mid_y + 5), (GW - pad - 5, mid_y + 5)], fill=white, width=2)
+# Equator (straight line)
+dg.line([(cx - (r - 2), cy), (cx + (r - 2), cy)], fill=white, width=1)
 
-# Vertical longitude lines (left and right of center)
-mid_x = GW // 2
-dg.line([(mid_x - 6, pad + 4), (mid_x - 6, GH - pad - 4)], fill=white, width=2)
-dg.line([(mid_x + 6, pad + 4), (mid_x + 6, GH - pad - 4)], fill=white, width=2)
+# Latitudes (curved): draw two horizontal ellipses with reduced height
+for frac in (0.55, 0.25):
+    h = max(1, int(r * frac))
+    dg.ellipse([cx - r, cy - h, cx + r, cy + h], outline=white, width=1)
+
+# Longitudes (curved): draw two vertical ellipses with reduced width
+for frac in (0.55, 0.25):
+    w = max(1, int(r * frac))
+    dg.ellipse([cx - w, cy - r, cx + w, cy + r], outline=white, width=1)
 
 globe.save(hello_out)
 print(f"Wrote hello menu icon to {hello_out}")
 
-# Generate a matching 24px-tall monochrome icon for the hello app (icon.png)
-hello_icon_out = Path(__file__).resolve().parents[1] / "badge" / "apps" / "hello" / "icon.png"
-
-# Utility: try to load a truetype font at or below a target size so that text fits width
-def fit_font(draw: ImageDraw.ImageDraw, text: str, max_width: int, start_size: int = 12, min_size: int = 6):
-    size = start_size
-    while size >= min_size:
-        try:
-            f = ImageFont.truetype("arial.ttf", size)
-        except Exception:
-            # Fallback to default bitmap font and break
-            return ImageFont.load_default()
-        try:
-            bbox = f.getbbox(text)
-            tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
-        except Exception:
-            try:
-                bbox = draw.textbbox((0, 0), text, font=f)
-                tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
-            except Exception:
-                tw, th = max_width + 1, 10
-        if tw <= max_width:
-            return f
-        size -= 1
-    return ImageFont.load_default()
-
-IW2, IH2 = 36, 24
-hello_icon = Image.new("RGBA", (IW2, IH2), (0, 0, 0, 0))
-dh = ImageDraw.Draw(hello_icon)
-
-# White oval outline, consistent with the DVD icon style
-pad = 2
-dh.ellipse([pad, pad + 2, IW2 - pad - 1, IH2 - pad - 3], outline=(255, 255, 255, 255), width=2)
-
-# Centered text ("HELLO"), scaled to fit if needed
-hello_text = "HELLO"
-font = fit_font(dh, hello_text, max_width=IW2 - 6, start_size=12, min_size=6)
-try:
-    bbox = font.getbbox(hello_text)
-    tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
-except Exception:
-    try:
-        bbox = dh.textbbox((0, 0), hello_text, font=font)
-        tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
-    except Exception:
-        tw, th = 20, 10
-
-tx = (IW2 - tw) // 2
-ty = (IH2 - th) // 2
-dh.text((tx, ty), hello_text, font=font, fill=(255, 255, 255, 255))
-
-hello_icon.save(hello_icon_out)
-print(f"Wrote menu icon to {hello_icon_out}")
+# (Removed text-based hello icon generation; globe icon above is the final output.)
