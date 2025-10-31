@@ -31,7 +31,8 @@ except Exception as e:
 # Pagination constants
 APPS_PER_PAGE = 6
 current_page = 0
-total_pages = max(1, math.ceil(len(apps) / APPS_PER_PAGE))
+# total_pages will be recalculated dynamically in update() to handle apps
+total_pages = 1
 
 # find installed apps and create icons for current page
 def load_page_icons(page):
@@ -69,6 +70,14 @@ alpha = 30
 
 def update():
     global active, icons, alpha, current_page, total_pages
+
+    # recalculate total pages in case apps were added/removed
+    total_pages = max(1, math.ceil(len(apps) / APPS_PER_PAGE))
+
+    # ensure current_page is within bounds
+    if current_page >= total_pages:
+        current_page = total_pages - 1
+        icons = load_page_icons(current_page)
 
     # process button inputs to switch between icons
     if io.BUTTON_C in io.pressed:
