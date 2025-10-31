@@ -4,6 +4,7 @@ from pathlib import Path
 out = Path(__file__).resolve().parents[1] / "badge" / "apps" / "dvd" / "assets"
 out.mkdir(parents=True, exist_ok=True)
 img_path = out / "dvd_logo.png"
+icon_out = Path(__file__).resolve().parents[1] / "badge" / "apps" / "dvd" / "icon.png"
 
 # create a small transparent image with "DVD" text
 W, H = 40, 18
@@ -57,3 +58,39 @@ d.text((tx, ty), text, font=font, fill=(255,255,255,255))
 
 img.save(img_path)
 print(f"Wrote sample DVD logo to {img_path}")
+
+# Also generate a 24px-tall monochrome icon for the menu (icon.png)
+IW, IH = 36, 24  # width x height; menu expects 24px tall, width is flexible
+icon = Image.new("RGBA", (IW, IH), (0, 0, 0, 0))
+di = ImageDraw.Draw(icon)
+
+# Draw a thin white oval (ellipse outline)
+pad = 2
+di.ellipse([pad, pad + 2, IW - pad - 1, IH - pad - 3], outline=(255, 255, 255, 255), width=2)
+
+# Draw white 'DVD' text centered
+try:
+    ifont = ImageFont.truetype("arial.ttf", 12)
+except Exception:
+    ifont = ImageFont.load_default()
+
+text = "DVD"
+try:
+    bbox = ifont.getbbox(text)
+    tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+except Exception:
+    try:
+        bbox = di.textbbox((0, 0), text, font=ifont)
+        tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    except Exception:
+        try:
+            tw, th = ifont.getmask(text).size
+        except Exception:
+            tw, th = 14, 10
+
+tx = (IW - tw) // 2
+ty = (IH - th) // 2
+di.text((tx, ty), text, font=ifont, fill=(255, 255, 255, 255))
+
+icon.save(icon_out)
+print(f"Wrote menu icon to {icon_out}")
