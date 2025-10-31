@@ -146,6 +146,62 @@ class Camera:
 
 camera = Camera()
 photo_count = 0
+FILM_CAPACITY = 36
+
+
+def draw_used_film():
+    """Draw a used roll of 35mm film"""
+    # Film canister body
+    can_x, can_y = 50, 35
+    can_w, can_h = 60, 50
+    
+    # Canister cylinder
+    screen.brush = brushes.color(80, 80, 85)
+    screen.draw(shapes.rounded_rectangle(can_x, can_y, can_w, can_h, 8))
+    
+    # Canister top ridge
+    screen.brush = brushes.color(100, 100, 105)
+    screen.draw(shapes.rounded_rectangle(can_x + 5, can_y - 3, can_w - 10, 8, 3))
+    
+    # Canister bottom ridge
+    screen.draw(shapes.rounded_rectangle(can_x + 5, can_y + can_h - 5, can_w - 10, 8, 3))
+    
+    # Film spool visible at top (circle)
+    screen.brush = brushes.color(60, 60, 65)
+    screen.draw(shapes.circle(can_x + can_w // 2, can_y + 10, 15))
+    
+    # Spool center hole
+    screen.brush = brushes.color(40, 40, 45)
+    screen.draw(shapes.circle(can_x + can_w // 2, can_y + 10, 8))
+    
+    # Film leader (exposed film strip)
+    leader_x = can_x + can_w - 5
+    leader_y = can_y + 15
+    screen.brush = brushes.color(220, 200, 180, 200)
+    screen.draw(shapes.rounded_rectangle(leader_x, leader_y, 15, 30, 2))
+    
+    # Film perforations (sprocket holes)
+    screen.brush = brushes.color(40, 40, 45)
+    for i in range(5):
+        hole_y = leader_y + 4 + (i * 5)
+        screen.draw(shapes.rectangle(leader_x + 2, hole_y, 2, 2))
+        screen.draw(shapes.rectangle(leader_x + 11, hole_y, 2, 2))
+    
+    # Film exposure indicator/sticker
+    screen.brush = brushes.color(200, 60, 60)
+    screen.draw(shapes.rectangle(can_x + 10, can_y + 22, 40, 8))
+    
+    # "36" exposure count on sticker
+    screen.font = small_font
+    screen.brush = brushes.color(255, 255, 255)
+    screen.text("36 EXP", can_x + 13, can_y + 23)
+    
+    # Film brand text
+    screen.font = small_font
+    screen.brush = brushes.color(200, 200, 200)
+    text = "MONA FILM"
+    w, _ = screen.measure_text(text)
+    screen.text(text, can_x + (can_w - w) // 2, can_y + 35)
 
 
 def update():
@@ -155,34 +211,61 @@ def update():
     screen.brush = brushes.color(20, 25, 30)
     screen.draw(shapes.rectangle(0, 0, 160, 120))
     
-    # Handle input
-    if io.BUTTON_DOWN in io.pressed:
-        camera.trigger_shoot()
-        photo_count += 1
+    # Check if film is full
+    film_full = photo_count >= FILM_CAPACITY
     
-    # Update camera animation
-    camera.update()
-    
-    # Draw camera
-    camera.draw()
-    
-    # Draw flash overlay on top
-    camera.draw_flash_overlay()
-    
-    # Draw instructions
-    screen.font = small_font
-    if int(io.ticks / 500) % 2:
-        screen.brush = brushes.color(180, 180, 180)
-        text = "Press DOWN to shoot"
+    if film_full:
+        # Show used film roll and reload instructions
+        draw_used_film()
+        
+        # Draw "FILM FULL" message
+        screen.font = large_font
+        screen.brush = brushes.color(255, 100, 100)
+        text = "FILM FULL!"
         w, _ = screen.measure_text(text)
-        screen.text(text, 80 - (w // 2), 105)
-    
-    # Draw photo counter
-    screen.font = large_font
-    screen.brush = brushes.color(211, 250, 55)
-    counter_text = f"Photos: {photo_count}"
-    w, _ = screen.measure_text(counter_text)
-    screen.text(counter_text, 80 - (w // 2), 5)
+        screen.text(text, 80 - (w // 2), 5)
+        
+        # Draw reload instruction
+        screen.font = small_font
+        if int(io.ticks / 500) % 2:
+            screen.brush = brushes.color(180, 180, 180)
+            text = "Press UP to reload"
+            w, _ = screen.measure_text(text)
+            screen.text(text, 80 - (w // 2), 105)
+        
+        # Handle reload
+        if io.BUTTON_UP in io.pressed:
+            photo_count = 0
+    else:
+        # Normal camera operation
+        # Handle input
+        if io.BUTTON_DOWN in io.pressed:
+            camera.trigger_shoot()
+            photo_count += 1
+        
+        # Update camera animation
+        camera.update()
+        
+        # Draw camera
+        camera.draw()
+        
+        # Draw flash overlay on top
+        camera.draw_flash_overlay()
+        
+        # Draw instructions
+        screen.font = small_font
+        if int(io.ticks / 500) % 2:
+            screen.brush = brushes.color(180, 180, 180)
+            text = "Press DOWN to shoot"
+            w, _ = screen.measure_text(text)
+            screen.text(text, 80 - (w // 2), 105)
+        
+        # Draw photo counter
+        screen.font = large_font
+        screen.brush = brushes.color(211, 250, 55)
+        counter_text = f"{photo_count}/{FILM_CAPACITY}"
+        w, _ = screen.measure_text(counter_text)
+        screen.text(counter_text, 80 - (w // 2), 5)
     
     return None
 
