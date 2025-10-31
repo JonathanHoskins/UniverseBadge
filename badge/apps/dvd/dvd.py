@@ -7,11 +7,12 @@ class DVDLogo:
     def __init__(self):
         self.w = 42
         self.h = 20
-        self.x = (screen.width - self.w) // 2
-        self.y = (screen.height - self.h) // 2
-        # initial velocity
-        self.dx = 1
-        self.dy = 1
+        # use floats for smoother, slower motion
+        self.x = float((screen.width - self.w) // 2)
+        self.y = float((screen.height - self.h) // 2)
+        # initial velocity (slower)
+        self.dx = 0.6 * (1 if random.choice([True, False]) else -1)
+        self.dy = 0.6 * (1 if random.choice([True, False]) else -1)
         self.color = (255, 0, 0)
         # try to load a sprite-based logo (assets/dvd_logo.png) as a 1x1 spritesheet
         self.sprite = None
@@ -60,11 +61,13 @@ class DVDLogo:
     def _on_bounce(self):
         # change color randomly on bounce
         self.color = (random.randint(50, 255), random.randint(50, 255), random.randint(50, 255))
-        # slightly randomize speed to keep motion interesting
-        if abs(self.dx) < 4:
-            self.dx += random.choice([-1, 0, 1])
-        if abs(self.dy) < 4:
-            self.dy += random.choice([-1, 0, 1])
+        # slightly randomize speed to keep motion interesting but stay slow
+        def clamp(v, lo=0.3, hi=2.0):
+            sign = 1 if v >= 0 else -1
+            return sign * max(lo, min(abs(v) + random.choice([-0.2, 0, 0.2]), hi))
+
+        self.dx = clamp(self.dx)
+        self.dy = clamp(self.dy)
 
     def draw(self):
         if self.sprite:
@@ -78,20 +81,25 @@ class DVDLogo:
             except Exception:
                 # fall through to rectangle fallback
                 pass
+            # draw rounded rectangle fallback with a subtle border
+            rx = int(round(self.x))
+            ry = int(round(self.y))
+            rw = int(self.w)
+            rh = int(self.h)
+            radius = 4
 
-        # draw rounded-ish rectangle fallback
-        screen.brush = brushes.color(*self.color)
-        screen.draw(shapes.rectangle(self.x, self.y, self.w, self.h))
+            screen.brush = brushes.color(*self.color)
+            screen.draw(shapes.rounded_rectangle(rx, ry, rw, rh, radius))
 
-        # draw border
-        screen.brush = brushes.color(0, 0, 0)
-        screen.draw(shapes.rectangle(self.x, self.y, self.w, 1))
-        screen.draw(shapes.rectangle(self.x, self.y + self.h - 1, self.w, 1))
+            # draw a thin border (top and bottom as subtle strips)
+            screen.brush = brushes.color(0, 0, 0)
+            screen.draw(shapes.rounded_rectangle(rx, ry, rw, 2, radius))
+            screen.draw(shapes.rounded_rectangle(rx, ry + rh - 2, rw, 2, radius))
 
-        # draw the text "DVD" centered inside
-        # do not override font; calling module should set the font
-        w, _ = screen.measure_text("DVD")
-        tx = self.x + (self.w - w) // 2
-        ty = self.y + (self.h - 8) // 2
-        screen.brush = brushes.color(0, 0, 0)
-        screen.text("DVD", tx, ty)
+            # draw the text "DVD" centered inside
+            # do not override font; calling module should set the font
+            w, _ = screen.measure_text("DVD")
+            tx = rx + (rw - w) // 2
+            ty = ry + (rh - 8) // 2
+            screen.brush = brushes.color(0, 0, 0)
+            screen.text("DVD", tx, ty)
