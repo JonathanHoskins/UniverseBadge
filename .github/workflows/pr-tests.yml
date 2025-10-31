@@ -19,7 +19,23 @@ jobs:
       - name: Install dependencies
         run: |
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          pip install pytest
+          pip install pytest ruff mypy flake8
+
+      - name: Run ruff (fast linter/formatter check)
+        run: |
+          echo "Running ruff..."
+          ruff check .
+
+      - name: Run mypy (type checks)
+        run: |
+          echo "Running mypy..."
+          # ignore missing imports to reduce false positives in CI
+          mypy --ignore-missing-imports .
+
+      - name: Run flake8 (style/linting)
+        run: |
+          echo "Running flake8..."
+          flake8 .
 
       - name: Run test checks script
         run: python tests/run_checks.py
