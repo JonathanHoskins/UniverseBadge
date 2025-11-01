@@ -292,7 +292,7 @@ def update():
         win_screen()
 
 def intro():
-    
+    global state, lives, score, paddle
     # Draw title
     screen.font = small_font
     screen.brush = brushes.color(255, 255, 255)
@@ -336,7 +336,7 @@ def intro():
         lives = 3
         score = 0
         create_bricks()
-        Paddle()
+        paddle = Paddle()
         ball.reset()
 
 def play():
