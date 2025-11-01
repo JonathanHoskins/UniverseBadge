@@ -1,31 +1,35 @@
 from aye_arr.nec.remotes.descriptor import RemoteDescriptor
 
-# Generic TV Remote using NEC protocol
-# Using a common TV remote address and standard button codes
+# Sony TV Remote using NEC protocol
+# Sony TVs often respond to NEC address 0x04 (some models) or 0x52 (Samsung-compatible)
+# These are common codes that work with many Sony TVs in universal remote mode
 class TVRemote(RemoteDescriptor):
-    NAME = "TVRemote"
+    NAME = "SonyTV"
     
-    # Common TV remote address (many TVs use 0x00 or similar)
-    ADDRESS = 0x00
+    # Sony TV NEC address - 0x52 is commonly used for Sony TVs in universal remote mode
+    # Alternative: Try 0x04 if 0x52 doesn't work with your specific TV model
+    ADDRESS = 0x52
     
-    # Standard NEC remote button codes for common TV functions
+    # NEC button codes for Sony TV compatible commands
     BUTTON_CODES = {
-        "POWER": 0x02,
-        "CHANNEL_UP": 0x00,
-        "CHANNEL_DOWN": 0x01,
-        "VOLUME_UP": 0x10,
-        "VOLUME_DOWN": 0x11,
-        "MUTE": 0x0D,
-        "1": 0x04,
-        "2": 0x05,
-        "3": 0x06,
-        "4": 0x08,
-        "5": 0x09,
-        "6": 0x0A,
-        "7": 0x0C,
-        "8": 0x0F,
-        "9": 0x0E,
-        "0": 0x03,
+        "POWER": 0x15,        # Power toggle
+        "CHANNEL_UP": 0x1B,   # Channel up
+        "CHANNEL_DOWN": 0x1F, # Channel down
+        "VOLUME_UP": 0x07,    # Volume up
+        "VOLUME_DOWN": 0x0B,  # Volume down
+        "MUTE": 0x0F,         # Mute toggle
+        "INPUT": 0x47,        # Input/Source
+        "MENU": 0x1A,         # Menu
+        "1": 0x16,
+        "2": 0x19,
+        "3": 0x0D,
+        "4": 0x18,
+        "5": 0x1C,
+        "6": 0x5E,
+        "7": 0x08,
+        "8": 0x42,
+        "9": 0x52,
+        "0": 0x4C,
     }
     
     def __init__(self):
