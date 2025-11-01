@@ -1,35 +1,43 @@
 from aye_arr.nec.remotes.descriptor import RemoteDescriptor
 
-# Sony TV Remote using NEC protocol
-# Sony TVs often respond to NEC address 0x04 (some models) or 0x52 (Samsung-compatible)
-# These are common codes that work with many Sony TVs in universal remote mode
+# Roku Remote Control using NEC protocol
+# Roku devices use NEC protocol with specific address and command codes
+# Based on Roku's published IR codes specification
 class TVRemote(RemoteDescriptor):
-    NAME = "SonyTV"
+    NAME = "Roku"
     
-    # Sony TV NEC address - 0x52 is commonly used for Sony TVs in universal remote mode
-    # Alternative: Try 0x04 if 0x52 doesn't work with your specific TV model
-    ADDRESS = 0x52
+    # Roku NEC address - Standard for Roku devices
+    ADDRESS = 0xEE87
     
-    # NEC button codes for Sony TV compatible commands
+    # Roku NEC button codes
+    # Source: https://developer.roku.com/docs/developer-program/debugging/external-control-api.md
     BUTTON_CODES = {
-        "POWER": 0x15,        # Power toggle
-        "CHANNEL_UP": 0x1B,   # Channel up
-        "CHANNEL_DOWN": 0x1F, # Channel down
-        "VOLUME_UP": 0x07,    # Volume up
-        "VOLUME_DOWN": 0x0B,  # Volume down
-        "MUTE": 0x0F,         # Mute toggle
-        "INPUT": 0x47,        # Input/Source
-        "MENU": 0x1A,         # Menu
-        "1": 0x16,
-        "2": 0x19,
-        "3": 0x0D,
-        "4": 0x18,
-        "5": 0x1C,
-        "6": 0x5E,
-        "7": 0x08,
-        "8": 0x42,
-        "9": 0x52,
-        "0": 0x4C,
+        # Navigation
+        "HOME": 0x03,         # Home button
+        "UP": 0x05,           # Up
+        "DOWN": 0x06,         # Down
+        "LEFT": 0x07,         # Left
+        "RIGHT": 0x04,        # Right
+        "OK": 0x02,           # OK/Select
+        "BACK": 0x0D,         # Back
+        
+        # Playback
+        "PLAY": 0x0B,         # Play/Pause
+        "REV": 0x08,          # Reverse/Rewind
+        "FWD": 0x09,          # Forward/Fast-forward
+        
+        # Channel/Search
+        "SEARCH": 0x0A,       # Search
+        "POWER": 0x17,        # Power (if TV supports CEC)
+        
+        # Volume (requires Roku TV or soundbar, not streaming stick)
+        "VOLUME_UP": 0x14,    # Volume up
+        "VOLUME_DOWN": 0x15,  # Volume down
+        "MUTE": 0x16,         # Mute
+        
+        # Special
+        "INFO": 0x0C,         # Info/Star (*)
+        "REPLAY": 0x13,       # Replay (instant replay)
     }
     
     def __init__(self):

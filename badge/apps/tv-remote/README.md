@@ -1,35 +1,46 @@
-# Sony TV Remote App
+# Roku Remote Control App
 
-A universal remote control app for controlling Sony TVs using the badge's IR transmitter.
+A universal remote control app for controlling Roku streaming devices using the badge's IR transmitter.
 
 ## Features
 
-- Power, Volume, Channel, Mute controls
-- Input/Source selection
-- Menu navigation
-- NEC protocol transmission
+- Navigation controls (Up/Down/Left/Right/OK)
+- Home, Back buttons
+- Play/Pause control
+- Volume controls (for Roku TV/soundbar)
 - Visual feedback for button presses
 - GitHub-themed UI
 
-## Sony TV Compatibility
+## Roku Compatibility
 
-This app uses **NEC protocol** codes that are compatible with many Sony TV models in universal remote mode:
+This app uses **NEC protocol** with Roku's official IR codes:
 
-- **Address**: `0x52` (Samsung-compatible codes that many Sony TVs accept)
-- **Alternative**: If `0x52` doesn't work, try changing to `0x04` in `remote.py`
+- **Address**: `0xEE87` (Standard Roku NEC address)
+- **Protocol**: NEC Infrared Remote Control
+- **Compatible Devices**:
+  - Roku Streaming Stick/Stick+
+  - Roku Ultra
+  - Roku Express/Express+
+  - Roku Premiere/Premiere+
+  - Roku TV (all models)
+  - Roku Streambar/Streambar Pro
 
 ### Supported Commands
 
 | Button | Function | Code |
 |--------|----------|------|
-| PWR | Power Toggle | 0x15 |
-| VOL+ | Volume Up | 0x07 |
-| VOL- | Volume Down | 0x0B |
-| CH+ | Channel Up | 0x1B |
-| CH- | Channel Down | 0x1F |
-| MUTE | Mute Toggle | 0x0F |
-| INPUT | Input/Source | 0x47 |
-| MENU | Menu | 0x1A |
+| HOME | Home Screen | 0x03 |
+| UP | Navigate Up | 0x05 |
+| DOWN | Navigate Down | 0x06 |
+| LEFT | Navigate Left | 0x07 |
+| RIGHT | Navigate Right | 0x04 |
+| OK | Select/OK | 0x02 |
+| BACK | Back/Exit | 0x0D |
+| PLAY | Play/Pause | 0x0B |
+| VOL+ | Volume Up* | 0x14 |
+| VOL- | Volume Down* | 0x15 |
+
+*Volume controls work on Roku TV and Streambar models. On streaming sticks, they control TV volume via HDMI-CEC if your TV supports it.
 
 ## Hardware Setup
 
@@ -51,15 +62,21 @@ The app is configured to use **GPIO pin 20** for IR transmission. This may need 
    - The app will show "INIT ERROR" if IR sender fails to initialize
    - Check the console output for detailed error messages
 
-3. **Check Sony TV Model**:
-   - Some Sony TVs only respond to Sony's proprietary SIRC protocol
-   - Try changing `ADDRESS` in `remote.py` from `0x52` to `0x04`
-   - Newer Sony TVs may require learning mode or app pairing
+3. **Check Roku Device**:
+   - Ensure Roku is powered on and not in sleep mode
+   - Some Roku devices have IR receiver on front, others on top
+   - Roku Streaming Stick models have IR receiver in the Roku logo
 
 4. **Distance & Aiming**:
-   - Point the badge's IR transmitter directly at the TV's receiver
-   - Try from 1-3 meters distance
-   - Ensure no obstacles between badge and TV
+   - Point the badge's IR transmitter directly at the Roku's IR receiver
+   - Try from 1-5 meters distance (Roku IR is generally more sensitive than TV remotes)
+   - For Roku Stick: aim at the side with the Roku logo
+   - For Roku boxes: aim at the front panel
+
+5. **Test Basic Functions**:
+   - Start with HOME button - should take you to Roku home screen
+   - Try OK button on home screen - should select highlighted app
+   - Navigation (UP/DOWN/LEFT/RIGHT) should move through menu
 
 ## Usage
 
@@ -78,10 +95,25 @@ The app is configured to use **GPIO pin 20** for IR transmission. This may need 
 
 ### TV Not Responding
 
-1. **Test with multiple TVs** - Confirm badge is transmitting
-2. **Change address** - Edit `remote.py` and try `ADDRESS = 0x04`
-3. **Check TV's universal remote support** - Some Sony TVs need setup mode
-4. **Verify distance** - Move closer to TV (< 2 meters)
+1. **Verify Roku is on** - Check that device has power and is awake
+2. **Find IR receiver** - Look for small dark window on Roku device
+3. **Test distance** - Start close (< 1 meter) and gradually move back
+4. **Try other buttons** - If HOME works, others should too
+5. **Check badge IR output** - Use phone camera to see if IR LED blinks (appears purple/white on camera)
+
+### Additional Roku Buttons
+
+Want more functions? Edit `remote.py` to add these Roku codes:
+
+```python
+"SEARCH": 0x0A,    # Voice search
+"REV": 0x08,       # Rewind
+"FWD": 0x09,       # Fast-forward  
+"INFO": 0x0C,      # Info (*)
+"REPLAY": 0x13,    # Instant replay
+"MUTE": 0x16,      # Mute
+"POWER": 0x17,     # Power (CEC-enabled TVs)
+```
 
 ### Code Changes Not Taking Effect
 
@@ -113,17 +145,39 @@ BUTTON_CODES = {
 
 ### Change TV Brand
 
-For other TV brands, edit `remote.py`:
+For other streaming devices or TV brands, edit `remote.py`:
 
 ```python
-# Samsung TVs often use:
-ADDRESS = 0xE0E0  # Extended address
+# Amazon Fire TV
+ADDRESS = 0xFB04  # Fire TV address
+BUTTON_CODES = {
+    "HOME": 0x03,
+    # ... Fire TV specific codes
+}
 
-# LG TVs often use:
-ADDRESS = 0x20  # Simple address
+# Apple TV (uses different protocol - may not work with NEC)
+# Samsung TV
+ADDRESS = 0xE0E0  # Samsung extended address
+
+# LG TV  
+ADDRESS = 0x20DF  # LG address
 ```
 
-Then update `BUTTON_CODES` with brand-specific codes (search online for NEC codes for your TV model).
+Then update button codes with brand-specific values (search online for NEC codes).
+
+## Why Roku?
+
+Roku devices are well-documented and consistently use the NEC IR protocol with the same address (0xEE87) across all models. This makes them ideal for IR remote projects. The codes are published in Roku's official documentation, ensuring compatibility.
+
+### Roku vs Other Devices
+
+- ✅ **Roku**: Excellent - Standard NEC, well-documented, works on all models
+- ⚠️ **Sony TV**: Variable - Some use NEC, others use proprietary SIRC protocol
+- ⚠️ **Samsung**: Mixed - Newer models prefer Bluetooth/WiFi over IR
+- ⚠️ **LG**: Similar to Samsung - IR support varies by model
+- ❌ **Apple TV**: Bluetooth only (4th gen+), no IR support
+- ✅ **Fire TV**: Good - Uses NEC protocol with address 0xFB04
+
 
 ## Technical Details
 
@@ -142,8 +196,9 @@ Then update `BUTTON_CODES` with brand-specific codes (search online for NEC code
 
 ## References
 
+- [Roku External Control API](https://developer.roku.com/docs/developer-program/debugging/external-control-api.md)
+- [Roku IR Code Specification](https://sdkdocs.roku.com/display/sdkdoc/External+Control+Guide)
 - [NEC Protocol Specification](https://www.sbprojects.net/knowledge/ir/nec.php)
-- [Sony TV IR Codes](https://www.remotecentral.com/cgi-bin/mboard/rc-pronto/thread.cgi?26250)
 - Badge Hardware: See `/badge/AGENTS.md` for IR pin details
 
 ## License

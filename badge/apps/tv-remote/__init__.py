@@ -24,16 +24,18 @@ HIGHLIGHT_COLOR = (88, 166, 255)  # Selected button
 ACTIVE_COLOR = (46, 160, 67) # Active/pressed state
 ERROR_COLOR = (248, 81, 73)  # Error state
 
-# Button layout - Now includes INPUT and MENU
+# Button layout - Roku-specific controls
 BUTTONS = [
-    {"label": "PWR", "code": "POWER", "x": 10, "y": 25},
-    {"label": "MENU", "code": "MENU", "x": 60, "y": 25},
-    {"label": "INPUT", "code": "INPUT", "x": 110, "y": 25},
-    {"label": "CH+", "code": "CHANNEL_UP", "x": 10, "y": 45},
-    {"label": "CH-", "code": "CHANNEL_DOWN", "x": 10, "y": 65},
-    {"label": "VOL+", "code": "VOLUME_UP", "x": 110, "y": 45},
-    {"label": "VOL-", "code": "VOLUME_DOWN", "x": 110, "y": 65},
-    {"label": "MUTE", "code": "MUTE", "x": 60, "y": 85},
+    {"label": "HOME", "code": "HOME", "x": 10, "y": 25},
+    {"label": "BACK", "code": "BACK", "x": 60, "y": 25},
+    {"label": "OK", "code": "OK", "x": 110, "y": 25},
+    {"label": "UP", "code": "UP", "x": 60, "y": 45},
+    {"label": "LEFT", "code": "LEFT", "x": 10, "y": 55},
+    {"label": "DOWN", "code": "DOWN", "x": 60, "y": 65},
+    {"label": "RIGHT", "code": "RIGHT", "x": 110, "y": 55},
+    {"label": "VOL+", "code": "VOLUME_UP", "x": 10, "y": 85},
+    {"label": "PLAY", "code": "PLAY", "x": 60, "y": 85},
+    {"label": "VOL-", "code": "VOLUME_DOWN", "x": 110, "y": 85},
 ]
 
 # State
@@ -53,7 +55,7 @@ def init():
         sender.start()
         tv_remote = TVRemote()
         print(f"IR Sender initialized on pin {IR_TX_PIN}")
-        print(f"Using Sony TV codes - Address: 0x{tv_remote.ADDRESS:02X}")
+        print(f"Using Roku codes - Address: 0x{tv_remote.ADDRESS:04X}")
     except Exception as e:
         init_error = str(e)
         print(f"Error initializing IR sender: {e}")
@@ -97,7 +99,7 @@ def update():
     # Draw title
     screen.brush = brushes.color(*TEXT_COLOR)
     screen.font = font
-    title = "SONY TV REMOTE"
+    title = "ROKU REMOTE"
     title_width, _ = screen.measure_text(title)
     screen.text(title, (160 - title_width) // 2, 2)
     
@@ -144,7 +146,7 @@ def update():
     # Draw status info
     screen.brush = brushes.color(*TEXT_COLOR)
     screen.font = font
-    status = f"Addr:0x{tv_remote.ADDRESS:02X}" if tv_remote else "No remote"
+    status = f"Addr:0x{tv_remote.ADDRESS:04X}" if tv_remote else "No remote"
     status_width, _ = screen.measure_text(status)
     screen.text(status, (160 - status_width) // 2, 100)
     
