@@ -209,7 +209,7 @@ def update():
             try:
                 if wlan.isconnected():
                     config = wlan.ifconfig()
-                    add_status(f"Connected!")
+                    add_status("Connected!")
                     add_status(f"IP: {config[0]}")
                 else:
                     status = wlan.status()
