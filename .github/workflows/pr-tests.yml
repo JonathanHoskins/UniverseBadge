@@ -30,8 +30,8 @@ jobs:
         run: |
           echo "Running mypy..."
           # ignore missing imports to reduce false positives in CI
-          # exclude ir-beacon (invalid Python package name with hyphen)
-          mypy --ignore-missing-imports --exclude 'ir-beacon' .
+          # exclude ir-beacon and eink (contain MicroPython/hardware-specific code)
+          mypy --ignore-missing-imports badge/ tests/
 
       - name: Run flake8 (style/linting)
         run: |
