@@ -277,7 +277,6 @@ def create_bricks():
             bricks.append(Brick(x, y, color))
 
 def update():
-    global state, lives, score
     
     # Clear screen
     screen.brush = brushes.color(*BACKGROUND_COLOR)
@@ -293,7 +292,6 @@ def update():
         win_screen()
 
 def intro():
-    global state, lives, score
     
     # Draw title
     screen.font = small_font
