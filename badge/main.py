@@ -98,6 +98,10 @@ running_app = __import__(app)
 
 getattr(running_app, "init", lambda: None)()
 
+# Reset inactivity timer when launching a new app
+last_activity_time[0] = io.ticks
+screensaver_active[0] = False
+
 # Use the same screensaver wrapper for the running app
 run(create_screensaver_wrapper(running_app.update, running_app))
 
