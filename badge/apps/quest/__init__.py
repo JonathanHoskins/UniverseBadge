@@ -11,7 +11,8 @@ from beacon import GithubUniverseBeacon
 from aye_arr.nec import NECReceiver
 import ui
 
-
+# Disable screensaver for quest app (need to stay awake for IR beacons)
+disable_screensaver = True
 
 small_font = PixelFont.load("/system/assets/fonts/ark.ppf")
 large_font = PixelFont.load("/system/assets/fonts/absolute.ppf")
