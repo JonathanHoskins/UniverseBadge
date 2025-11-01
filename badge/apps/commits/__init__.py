@@ -113,7 +113,7 @@ class Paddle:
                 
                 # Calculate paddle position that would deflect ball toward target
                 # When ball hits paddle, we want to aim it at the target
-                paddle_center = (paddle_left + paddle_right) // 2
+                (paddle_left + paddle_right) // 2
                 
                 # If ball is heading down, position to intercept and angle toward target
                 desired_offset = 0
@@ -340,9 +340,8 @@ def intro():
         state = GameState.PLAYING
         lives = 3
         score = 0
-        auto_play = False
         create_bricks()
-        paddle = Paddle()
+        Paddle()
         ball.reset()
 
 def play():
