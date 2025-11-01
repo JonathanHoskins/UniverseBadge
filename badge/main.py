@@ -76,8 +76,8 @@ def wrapped_update():
     # Check if app wants to disable screensaver
     disable_screensaver = getattr(running_app, 'disable_screensaver', False)
     
-    # Update inactivity timer on any button press
-    if io.pressed or io.held:
+    # Update inactivity timer on any button press (check if sets are non-empty)
+    if len(io.pressed) > 0 or len(io.held) > 0:
         last_activity_time = io.ticks
         if screensaver_active:
             screensaver_active = False
