@@ -23,7 +23,7 @@ class TVRemote(RemoteDescriptor):
         "5": 0x09,
         "6": 0x0A,
         "7": 0x0C,
-        "8": 0x0D,
+        "8": 0x0F,
         "9": 0x0E,
         "0": 0x03,
     }
