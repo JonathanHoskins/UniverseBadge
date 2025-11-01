@@ -8,4 +8,11 @@ exclude = [
   "images/**",
 ]
 
-# You can customize rules later; keep defaults for now.
+[lint]
+# Ignore rules that conflict with intentional MicroPython app patterns
+ignore = [
+  "E402",  # Module level import not at top of file - apps need to set sys.path first
+  "E701",  # Multiple statements on one line (colon) - used for compact counting logic
+  "F403",  # Star imports - used in some UI modules for convenience
+  "F405",  # May be undefined from star imports - consequence of F403
+]
