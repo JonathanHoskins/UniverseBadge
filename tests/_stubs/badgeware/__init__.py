@@ -218,6 +218,16 @@ class _State:
         return True
 
 
+def get_battery_level():
+    """Stub: return fake battery level"""
+    return 80
+
+
+def is_charging():
+    """Stub: return False for charging status"""
+    return False
+
+
 # Public API objects
 screen = _Screen()
 brushes = SimpleNamespace(color=_color)
