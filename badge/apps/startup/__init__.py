@@ -23,7 +23,7 @@ CLEAR = shapes.rectangle(0, 0, screen.width, screen.height)
 
 def show_frame(i, alpha=255):
     # check if this frame needs loading
-    global current_frame, current_frame_filename
+    global current_frame_filename
     filename = f"frames/intro_{i:05d}.png"
     screen.load_into(filename)
 

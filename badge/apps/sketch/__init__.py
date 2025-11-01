@@ -68,7 +68,7 @@ def update_mona():
 
 
 def update():
-    global mona_target, mona_direction
+    global mona_target
 
     update_cursor()
     update_mona()

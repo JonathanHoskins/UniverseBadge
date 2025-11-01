@@ -1,6 +1,3 @@
-import sys
-import os
-
 from badgeware import screen, PixelFont, shapes, brushes, io, run
 import random
 
@@ -100,7 +97,6 @@ last_update = 0
 update_interval = 150  # milliseconds
 
 def update():
-    global state, score, last_update
     
     # Clear screen
     screen.brush = brushes.color(*BACKGROUND_COLOR)
@@ -114,7 +110,7 @@ def update():
         game_over()
 
 def intro():
-    global state, snake, commit, score
+    global state, score
     
     # Draw title
     screen.font = small_font

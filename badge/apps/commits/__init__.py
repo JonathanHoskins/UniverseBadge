@@ -1,6 +1,3 @@
-import sys
-import os
-
 from badgeware import screen, PixelFont, shapes, brushes, io, run
 import random
 
@@ -113,7 +110,7 @@ class Paddle:
                 
                 # Calculate paddle position that would deflect ball toward target
                 # When ball hits paddle, we want to aim it at the target
-                paddle_center = (paddle_left + paddle_right) // 2
+                (paddle_left + paddle_right) // 2
                 
                 # If ball is heading down, position to intercept and angle toward target
                 desired_offset = 0
@@ -280,7 +277,6 @@ def create_bricks():
             bricks.append(Brick(x, y, color))
 
 def update():
-    global state, lives, score
     
     # Clear screen
     screen.brush = brushes.color(*BACKGROUND_COLOR)
@@ -296,8 +292,7 @@ def update():
         win_screen()
 
 def intro():
-    global state, lives, score
-    
+    global state, lives, score, paddle
     # Draw title
     screen.font = small_font
     screen.brush = brushes.color(255, 255, 255)
@@ -340,7 +335,6 @@ def intro():
         state = GameState.PLAYING
         lives = 3
         score = 0
-        auto_play = False
         create_bricks()
         paddle = Paddle()
         ball.reset()

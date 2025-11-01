@@ -13,7 +13,6 @@ running_app = None
 
 
 def quit_to_launcher(pin):
-    global running_app
     getattr(running_app, "on_exit", lambda: None)()
     # If we reset while boot is low, bad times
     while not pin.value():

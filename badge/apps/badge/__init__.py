@@ -46,7 +46,10 @@ def get_connection_details(user):
 
     try:
         sys.path.insert(0, "/")
-        from secrets import WIFI_PASSWORD, WIFI_SSID, GITHUB_USERNAME
+        import secrets as _secrets
+        WIFI_PASSWORD = getattr(_secrets, "WIFI_PASSWORD", None)
+        WIFI_SSID = getattr(_secrets, "WIFI_SSID", None)
+        GITHUB_USERNAME = getattr(_secrets, "GITHUB_USERNAME", None)
         sys.path.pop(0)
     except ImportError:
         WIFI_PASSWORD = None
@@ -65,7 +68,7 @@ def get_connection_details(user):
 
 
 def wlan_start():
-    global wlan, ticks_start, connected, WIFI_PASSWORD, WIFI_SSID
+    global wlan, ticks_start, connected
 
     if ticks_start is None:
         ticks_start = io.ticks
@@ -291,7 +294,7 @@ class User:
                 next(self._task)
             except StopIteration:
                 self._task = None
-            except:
+            except Exception:
                 self._task = None
                 handle = "fetch error"
 
