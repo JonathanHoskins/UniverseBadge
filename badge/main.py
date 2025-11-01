@@ -63,7 +63,41 @@ running_app = __import__(app)
 
 getattr(running_app, "init", lambda: None)()
 
-run(running_app.update)
+# --- Screensaver/auto-dim wrapper ---
+from badgeware import screen, brushes, shapes
+
+INACTIVITY_TIMEOUT_MS = 60000  # 60 seconds
+last_activity_time = io.ticks
+screensaver_active = False
+
+def wrapped_update():
+    global last_activity_time, screensaver_active
+    
+    # Check if app wants to disable screensaver
+    disable_screensaver = getattr(running_app, 'disable_screensaver', False)
+    
+    # Update inactivity timer on any button press
+    if io.pressed or io.held:
+        last_activity_time = io.ticks
+        if screensaver_active:
+            screensaver_active = False
+    
+    # Call the app's update function
+    result = running_app.update()
+    
+    # Apply screensaver if inactive for too long and app allows it
+    if not disable_screensaver:
+        time_since_activity = io.ticks - last_activity_time
+        if time_since_activity > INACTIVITY_TIMEOUT_MS:
+            if not screensaver_active:
+                screensaver_active = True
+            # Draw dim overlay
+            screen.brush = brushes.color(0, 0, 0, 180)
+            screen.draw(shapes.rectangle(0, 0, 160, 120))
+    
+    return result
+
+run(wrapped_update)
 
 # Unreachable, in theory!
 machine.reset()
