@@ -6,6 +6,11 @@ sys.path.insert(0, "/system/apps/tv-remote")
 from badgeware import screen, PixelFont, shapes, brushes, io, run
 from aye_arr.nec import NECSender
 from remote import TVRemote
+try:
+    # Optional: pin finder diagnostic tool (same app folder)
+    import pin_finder as pinfinder
+except Exception:
+    pinfinder = None
 
 # Pin configuration for IR transmitter
 # Note: Badge has IR receiver on pin 21. Transmitter pin needs verification.
@@ -36,6 +41,8 @@ BUTTONS = [
     {"label": "VOL+", "code": "VOLUME_UP", "x": 10, "y": 85},
     {"label": "PLAY", "code": "PLAY", "x": 60, "y": 85},
     {"label": "VOL-", "code": "VOLUME_DOWN", "x": 110, "y": 85},
+    # Utility: Launch the IR Pin Finder tool
+    {"label": "PIN", "code": "PIN_FINDER", "x": 60, "y": 105},
 ]
 
 # State
@@ -43,6 +50,7 @@ selected_button = 0
 last_send_time = 0
 send_cooldown = 300  # milliseconds between sends
 init_error = None
+use_pin_finder = False
 
 # Initialize IR sender
 sender = None
@@ -82,6 +90,15 @@ def draw_button(x, y, width, height, label, is_selected, is_active):
 
 def send_ir_code(code_name):
     global last_send_time
+    # Special utility action: launch PIN FINDER mode
+    if code_name == "PIN_FINDER":
+        global use_pin_finder, init_error
+        if pinfinder is None:
+            init_error = "PinFinder missing"
+        else:
+            use_pin_finder = True
+        return
+
     if sender and tv_remote:
         try:
             sender.send_remote(tv_remote, code_name)
@@ -96,6 +113,25 @@ def update():
     screen.brush = brushes.color(*BG_COLOR)
     screen.clear()
     
+    # If in Pin Finder mode, delegate update to tool and provide a back affordance
+    if use_pin_finder and pinfinder:
+        # 'B' to return to Roku remote
+        if io.BUTTON_B in io.pressed:
+            # Exit pin finder mode
+            globals()['use_pin_finder'] = False
+        else:
+            # Draw a subtle header bar with a back hint
+            screen.brush = brushes.color(13, 17, 23)
+            screen.draw(shapes.rectangle(0, 0, 160, 14))
+            screen.brush = brushes.color(*TEXT_COLOR)
+            screen.font = font
+            hint = "Pin Finder  (B: Back)"
+            w, _ = screen.measure_text(hint)
+            screen.text(hint, (160 - w) // 2, 2)
+            # Run the pin finder UI for this frame
+            pinfinder.update()
+        return None
+
     # Draw title
     screen.brush = brushes.color(*TEXT_COLOR)
     screen.font = font
@@ -150,8 +186,8 @@ def update():
     status_width, _ = screen.measure_text(status)
     screen.text(status, (160 - status_width) // 2, 100)
     
-    # Draw instructions
-    instructions = "UP/DN:Select A:Send"
+    # Draw instructions (and hint for Pin Finder button)
+    instructions = "UP/DN:Select  A:Send  PIN: Finder"
     inst_width, _ = screen.measure_text(instructions)
     screen.text(instructions, (160 - inst_width) // 2, 110)
     
