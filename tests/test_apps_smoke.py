@@ -1,5 +1,4 @@
 import importlib
-import sys
 from pathlib import Path
 
 from tests.conftest import prepare_app_import
