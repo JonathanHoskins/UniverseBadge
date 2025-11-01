@@ -32,6 +32,17 @@ class _Screen:
     def scale_blit(self, _img, _x: int, _y: int, _w: int, _h: int):
         return None
 
+    def window(self, _x, _y, _w, _h):
+        # Return a lightweight view with same API
+        view = _Screen()
+        view.width = _w
+        view.height = _h
+        return view
+
+    def load_into(self, _filename: str):
+        # No-op for tests
+        return None
+
 
 def _color(r, g=None, b=None, a=255):
     # Accept either (r,g,b[,a]) or grayscale style when only 'r' provided
@@ -60,12 +71,17 @@ class _Shapes:
     def squircle(self, *args, **kwargs):
         return self._Shape()
 
+    def line(self, *args, **kwargs):
+        return self._Shape()
+
 
 class _Image:
     def __init__(self, width=24, height=24):
         self.width = width
         self.height = height
         self.alpha = 255
+    # Provide antialias constant used by some apps
+    X2 = 2
 
     @classmethod
     def load(cls, _path: str):
@@ -88,13 +104,35 @@ class _SpriteSheet:
         self._cols = _cols
         self._rows = _rows
 
-    def animation(self):
-        # Return an object with a no-op draw
+    def animation(self, start_x: int = 0, start_y: int = 0, count: int | None = None):
+        """Return a lightweight animation object.
+
+        Some apps call animation() with (start_x, start_y, count). We only need to
+        support .frame(i) and .count() for smoke tests.
+        """
+
         class _Anim:
+            def __init__(self, _count: int | None):
+                # default to 1 if unknown; tests only check type/availability
+                self._count = _count if _count is not None else 1
+
+            def frame(self, _i: int):
+                # Return a simple sprite image; size is arbitrary for tests
+                return _Image(16, 16)
+
+            def count(self) -> int:
+                return int(self._count)
+
             def draw(self, *args, **kwargs):
+                # Some apps might try to call draw on the animation
                 return None
 
-        return _Anim()
+        return _Anim(count)
+
+    def sprite(self, _x: int, _y: int):
+        # Return a simple image-like object
+        img = _Image(16, 16)
+        return img
 
 
 class _PixelFont:
@@ -122,7 +160,14 @@ class _IO:
     BUTTON_UP = 4
     BUTTON_DOWN = 5
     pressed = set()
+    held = set()
     ticks = 0
+    ticks_delta = 100
+
+    @staticmethod
+    def poll():
+        # no-op in tests
+        return None
 
 
 def is_dir(_path: str) -> bool:
@@ -135,13 +180,42 @@ def file_exists(_path: str) -> bool:
     return False
 
 
+def get_battery_level() -> float:
+    # Return a mock battery level (0.0 to 1.0)
+    return 0.85
+
+
 def run(update_fn):
     # Just invoke a single update for smoke testing
     try:
         return update_fn()
     finally:
         # Increment ticks a little to let blink logic move forward
-        _IO.ticks += 100
+        _IO.ticks_delta = 100
+        _IO.ticks += _IO.ticks_delta
+
+
+class _Display:
+    @staticmethod
+    def update():
+        return None
+
+
+class _State:
+    _store = {}
+
+    @classmethod
+    def load(cls, key: str, obj):
+        data = cls._store.get(key)
+        if isinstance(obj, dict):
+            if data and isinstance(data, dict):
+                obj.update(data)
+        return True
+
+    @classmethod
+    def save(cls, key: str, obj):
+        cls._store[key] = obj
+        return True
 
 
 # Public API objects
@@ -153,3 +227,5 @@ SpriteSheet = _SpriteSheet
 PixelFont = _PixelFont
 Matrix = _Matrix
 io = _IO
+display = _Display
+State = _State
