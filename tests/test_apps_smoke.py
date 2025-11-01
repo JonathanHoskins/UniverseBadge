@@ -26,6 +26,7 @@ def test_each_app_runs_one_update():
         # Hardware/network dependent or complex runtime coupling
         "badge",   # requires network/machine/powman
         "quest",   # IR beacon and external libs
+        "tv-remote",  # IR beacon and external libs
         "gallery", # file system expectations
         "monapet", # heavy sprite/UI coupling
         "sketch",  # UI module coupling
