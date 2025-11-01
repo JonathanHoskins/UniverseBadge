@@ -4,8 +4,6 @@ import os
 sys.path.insert(0, "/system/apps/quest")
 os.chdir("/system/apps/quest")
 
-import math
-import random
 from badgeware import State, PixelFont, Image, brushes, screen, io, shapes, run
 from beacon import GithubUniverseBeacon
 from aye_arr.nec import NECReceiver

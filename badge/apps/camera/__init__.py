@@ -5,7 +5,6 @@ sys.path.insert(0, "/system/apps/camera")
 os.chdir("/system/apps/camera")
 
 from badgeware import screen, PixelFont, brushes, shapes, run, io
-import math
 
 small_font = PixelFont.load("/system/assets/fonts/nope.ppf")
 large_font = PixelFont.load("/system/assets/fonts/ark.ppf")

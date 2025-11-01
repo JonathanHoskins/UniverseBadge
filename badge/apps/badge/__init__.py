@@ -291,7 +291,7 @@ class User:
                 next(self._task)
             except StopIteration:
                 self._task = None
-            except:
+            except Exception:
                 self._task = None
                 handle = "fetch error"
 

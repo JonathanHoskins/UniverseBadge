@@ -1,6 +1,3 @@
-import sys
-import os
-
 from badgeware import screen, PixelFont, shapes, brushes, io, run
 import random
 
