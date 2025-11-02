@@ -45,19 +45,22 @@ pressed_queue: set[int] = set()
 held_keys: set[int] = set()
 
 # Available apps (mimics menu structure)
+# Note: Many apps require /system/ filesystem paths that only exist on hardware
+# These desktop-compatible apps work in the emulator:
 APPS = [
-    ("badge", "Badge Info"),
     ("hello", "Hello World"),
     ("life", "Game of Life"),
-    ("snake", "Snake"),
-    ("flappy", "Flappy Mona"),
-    ("monapet", "Mona Pet"),
-    ("sketch", "Sketch Pad"),
-    ("quest", "Quest Game"),
-    ("commits", "GitHub Commits"),
-    ("gallery", "Image Gallery"),
     ("wifi", "WiFi Diagnostics"),
     ("hc911", "HC 911 Incidents"),
+    # Require hardware filesystem (commented out for desktop emulator):
+    # ("badge", "Badge Info"),
+    # ("snake", "Snake"),
+    # ("flappy", "Flappy Mona"),
+    # ("monapet", "Mona Pet"),
+    # ("sketch", "Sketch Pad"),
+    # ("quest", "Quest Game"),
+    # ("commits", "GitHub Commits"),
+    # ("gallery", "Image Gallery"),
 ]
 
 # State
@@ -168,10 +171,17 @@ def _load_app(app_name: str) -> ModuleType | None:
     try:
         mod = importlib.import_module(f"badge.apps.{app_name}")
         if not hasattr(mod, "update"):
+            print(f"App {app_name} has no update() function")
             return None
         return mod
+    except ModuleNotFoundError as e:
+        print(f"App {app_name} not found: {e}")
+        return None
+    except FileNotFoundError as e:
+        print(f"App {app_name} requires hardware filesystem (skipping): {e}")
+        return None
     except Exception as e:
-        print(f"Failed to load app {app_name}: {e}")
+        print(f"Failed to load app {app_name}: {type(e).__name__}: {e}")
         return None
 
 
