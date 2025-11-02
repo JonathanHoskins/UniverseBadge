@@ -50,6 +50,7 @@ def _load_app(modname: str) -> ModuleType:
 SCALE = 3  # scale drawing for visibility
 WIDTH, HEIGHT = 160, 120
 pressed_queue: set[int] = set()
+held_keys: set[int] = set()
 
 
 def _to_hex(color):
@@ -178,7 +179,10 @@ def _windows_key_input():
                 io.pressed.add(io.BUTTON_UP)
             elif ch2 == b"P":  # down
                 io.pressed.add(io.BUTTON_DOWN)
-            # left/right are currently unused by most apps
+            elif ch2 == b"K":  # left
+                io.pressed.add(getattr(io, "BUTTON_LEFT", io.BUTTON_UP))
+            elif ch2 == b"M":  # right
+                io.pressed.add(getattr(io, "BUTTON_RIGHT", io.BUTTON_DOWN))
     return True
 
 
@@ -189,15 +193,29 @@ def _tk_bind_keys(root):
     def _press(btn):
         pressed_queue.add(btn)
 
-    # Key bindings
+    def _hold(btn):
+        held_keys.add(btn)
+
+    def _release(btn):
+        held_keys.discard(btn)
+
+    # Key bindings for A/B/C (press only)
     root.bind("<KeyPress-a>", lambda e: _press(io.BUTTON_A))
     root.bind("<KeyPress-A>", lambda e: _press(io.BUTTON_A))
     root.bind("<KeyPress-b>", lambda e: _press(io.BUTTON_B))
     root.bind("<KeyPress-B>", lambda e: _press(io.BUTTON_B))
     root.bind("<KeyPress-c>", lambda e: _press(io.BUTTON_C))
     root.bind("<KeyPress-C>", lambda e: _press(io.BUTTON_C))
-    root.bind("<Up>", lambda e: _press(io.BUTTON_UP))
-    root.bind("<Down>", lambda e: _press(io.BUTTON_DOWN))
+
+    # Arrow keys (hold + repeat)
+    root.bind("<KeyPress-Up>", lambda e: _hold(io.BUTTON_UP))
+    root.bind("<KeyRelease-Up>", lambda e: _release(io.BUTTON_UP))
+    root.bind("<KeyPress-Down>", lambda e: _hold(io.BUTTON_DOWN))
+    root.bind("<KeyRelease-Down>", lambda e: _release(io.BUTTON_DOWN))
+    root.bind("<KeyPress-Left>", lambda e: _hold(getattr(io, 'BUTTON_LEFT', io.BUTTON_UP)))
+    root.bind("<KeyRelease-Left>", lambda e: _release(getattr(io, 'BUTTON_LEFT', io.BUTTON_UP)))
+    root.bind("<KeyPress-Right>", lambda e: _hold(getattr(io, 'BUTTON_RIGHT', io.BUTTON_DOWN)))
+    root.bind("<KeyRelease-Right>", lambda e: _release(getattr(io, 'BUTTON_RIGHT', io.BUTTON_DOWN)))
 
 
 def _tk_controls(root):
@@ -210,13 +228,24 @@ def _tk_controls(root):
     def press(btn):
         pressed_queue.add(btn)
 
-    # Layout: [Up] [Down] [A] [B] [C]
+    # Hold toggles
+    hold_up_var = tk.BooleanVar(value=False)
+    hold_down_var = tk.BooleanVar(value=False)
+
+    # Layout: [Left] [Up] [Down] [Right]   [A] [B] [C]   [Hold Up] [Hold Down]
+    tk.Button(frm, text="Left", width=6, command=lambda: press(getattr(io, 'BUTTON_LEFT', io.BUTTON_UP))).pack(side="left", padx=4)
     tk.Button(frm, text="Up", width=6, command=lambda: press(io.BUTTON_UP)).pack(side="left", padx=4)
     tk.Button(frm, text="Down", width=6, command=lambda: press(io.BUTTON_DOWN)).pack(side="left", padx=4)
+    tk.Button(frm, text="Right", width=6, command=lambda: press(getattr(io, 'BUTTON_RIGHT', io.BUTTON_DOWN))).pack(side="left", padx=4)
+
     tk.Button(frm, text="A", width=6, command=lambda: press(io.BUTTON_A)).pack(side="left", padx=12)
     tk.Button(frm, text="B", width=6, command=lambda: press(io.BUTTON_B)).pack(side="left", padx=4)
     tk.Button(frm, text="C", width=6, command=lambda: press(io.BUTTON_C)).pack(side="left", padx=4)
-    return frm
+
+    tk.Checkbutton(frm, text="Hold Up", variable=hold_up_var).pack(side="left", padx=12)
+    tk.Checkbutton(frm, text="Hold Down", variable=hold_down_var).pack(side="left", padx=4)
+
+    return frm, hold_up_var, hold_down_var
 
 
 def _print_state(mod: ModuleType):
@@ -239,7 +268,7 @@ def main():
         canvas = tk.Canvas(root, width=WIDTH * SCALE, height=HEIGHT * SCALE, bg="#0d1117")
         canvas.pack()
         _tk_bind_keys(root)
-        _tk_controls(root)
+        frm, hold_up_var, hold_down_var = _tk_controls(root)
 
     # Patch badgeware screen & shapes with visual versions if we have a canvas
     if canvas is not None:
@@ -259,10 +288,28 @@ def main():
             io.pressed.clear()
             # Prefer Tk bindings if available; otherwise use console keys
             if root is not None:
+                # Update held from toggles
+                try:
+                    if hold_up_var and hold_up_var.get():
+                        held_keys.add(io.BUTTON_UP)
+                    else:
+                        held_keys.discard(io.BUTTON_UP)
+                    if hold_down_var and hold_down_var.get():
+                        held_keys.add(io.BUTTON_DOWN)
+                    else:
+                        held_keys.discard(io.BUTTON_DOWN)
+                except Exception:
+                    pass
                 # Transfer queued button presses for this frame
                 if pressed_queue:
                     io.pressed.update(pressed_queue)
                     pressed_queue.clear()
+                # Apply held keys as repeated presses
+                if held_keys:
+                    io.held = set(held_keys)
+                    io.pressed.update(held_keys)
+                else:
+                    io.held = set()
             else:
                 if not _windows_key_input():
                     break
