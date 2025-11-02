@@ -20,6 +20,7 @@ connect_attempted = False
 last_wifi_check = 0
 wifi_was_connected = False
 last_error_time = 0
+cached_error_msg = None
 
 # Colors
 BG = (13, 17, 23)
@@ -32,7 +33,7 @@ DIM = (88, 96, 105)
 
 def fetch_incidents():
     """Fetch incident data from Hamilton County 911 website."""
-    global active_incidents, daily_total, yearly_total, status_text, error_msg, fetching, last_error_time
+    global active_incidents, daily_total, yearly_total, status_text, error_msg, fetching, last_error_time, cached_error_msg
     
     fetching = True
     status_text = "Fetching..."
@@ -48,6 +49,7 @@ def fetch_incidents():
         if not (wlan and wlan.isconnected()):
             status_text = "WiFi not connected"
             error_msg = "Press B to enable WiFi"
+            cached_error_msg = error_msg
             try:
                 last_error_time = io.ticks
             except Exception:
@@ -127,9 +129,11 @@ def fetch_incidents():
             status_text = "Updated"
             # Clear any previous error indicator on success
             last_error_time = 0
+            cached_error_msg = None
         else:
             status_text = "Parse error"
             error_msg = "Could not find data"
+            cached_error_msg = error_msg
             try:
                 last_error_time = io.ticks
             except Exception:
@@ -138,6 +142,7 @@ def fetch_incidents():
     except Exception as e:
         status_text = "Error"
         error_msg = str(e)[:30]
+        cached_error_msg = error_msg
         try:
             last_error_time = io.ticks
         except Exception:
@@ -147,7 +152,7 @@ def fetch_incidents():
 
 
 def update():
-    global font, last_fetch, status_text, error_msg
+    global font, last_fetch, status_text, error_msg, cached_error_msg
     global wifi_enabled, wlan, connect_attempted, last_wifi_check, wifi_was_connected
     
     screen.brush = brushes.color(*BG)
@@ -233,6 +238,9 @@ def update():
 
     # Handle fetch button
     if io.BUTTON_A in io.pressed and not fetching:
+        # If there's a cached error (even if expired), show it briefly as tooltip
+        if cached_error_msg and not error_msg:
+            error_msg = f"Last: {cached_error_msg}"
         last_fetch = io.ticks
         try:
             fetch_incidents()
