@@ -1,10 +1,11 @@
 """
-Desktop runner for badge apps using the test stubs, with a simple visual screen.
+Desktop runner for badge apps using the test stubs, with a simple visual screen and interactive buttons.
 
 - Uses tests/_stubs/badgeware to emulate the badgeware API
 - Provides a Tkinter window to visualize drawing (text and simple shapes)
 - Calls app.update() in a loop
 - Maps keyboard keys to io.BUTTON_* (A/B/C and arrows)
+- Adds clickable on-screen buttons for A, B, C, Up, Down
 - Prints key UI state each second (status text, errors, connectivity)
 
 Press ESC in the console to quit (or close the window).
@@ -48,6 +49,7 @@ def _load_app(modname: str) -> ModuleType:
 
 SCALE = 3  # scale drawing for visibility
 WIDTH, HEIGHT = 160, 120
+pressed_queue: set[int] = set()
 
 
 def _to_hex(color):
@@ -180,6 +182,43 @@ def _windows_key_input():
     return True
 
 
+def _tk_bind_keys(root):
+    if tk is None:
+        return
+
+    def _press(btn):
+        pressed_queue.add(btn)
+
+    # Key bindings
+    root.bind("<KeyPress-a>", lambda e: _press(io.BUTTON_A))
+    root.bind("<KeyPress-A>", lambda e: _press(io.BUTTON_A))
+    root.bind("<KeyPress-b>", lambda e: _press(io.BUTTON_B))
+    root.bind("<KeyPress-B>", lambda e: _press(io.BUTTON_B))
+    root.bind("<KeyPress-c>", lambda e: _press(io.BUTTON_C))
+    root.bind("<KeyPress-C>", lambda e: _press(io.BUTTON_C))
+    root.bind("<Up>", lambda e: _press(io.BUTTON_UP))
+    root.bind("<Down>", lambda e: _press(io.BUTTON_DOWN))
+
+
+def _tk_controls(root):
+    if tk is None:
+        return None
+
+    frm = tk.Frame(root)
+    frm.pack(fill="x", pady=4)
+
+    def press(btn):
+        pressed_queue.add(btn)
+
+    # Layout: [Up] [Down] [A] [B] [C]
+    tk.Button(frm, text="Up", width=6, command=lambda: press(io.BUTTON_UP)).pack(side="left", padx=4)
+    tk.Button(frm, text="Down", width=6, command=lambda: press(io.BUTTON_DOWN)).pack(side="left", padx=4)
+    tk.Button(frm, text="A", width=6, command=lambda: press(io.BUTTON_A)).pack(side="left", padx=12)
+    tk.Button(frm, text="B", width=6, command=lambda: press(io.BUTTON_B)).pack(side="left", padx=4)
+    tk.Button(frm, text="C", width=6, command=lambda: press(io.BUTTON_C)).pack(side="left", padx=4)
+    return frm
+
+
 def _print_state(mod: ModuleType):
     # Try to print common fields if present
     fields = []
@@ -199,6 +238,8 @@ def main():
         root.title(f"UniverseBadge Emulator - {APP_MODULE}")
         canvas = tk.Canvas(root, width=WIDTH * SCALE, height=HEIGHT * SCALE, bg="#0d1117")
         canvas.pack()
+        _tk_bind_keys(root)
+        _tk_controls(root)
 
     # Patch badgeware screen & shapes with visual versions if we have a canvas
     if canvas is not None:
@@ -215,8 +256,16 @@ def main():
             io.ticks += 33
 
             # Handle keys
-            if not _windows_key_input():
-                break
+            io.pressed.clear()
+            # Prefer Tk bindings if available; otherwise use console keys
+            if root is not None:
+                # Transfer queued button presses for this frame
+                if pressed_queue:
+                    io.pressed.update(pressed_queue)
+                    pressed_queue.clear()
+            else:
+                if not _windows_key_input():
+                    break
 
             # Run one update frame
             mod.update()
