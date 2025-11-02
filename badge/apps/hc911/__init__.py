@@ -21,6 +21,7 @@ last_wifi_check = 0
 wifi_was_connected = False
 last_error_time = 0
 cached_error_msg = None
+wifi_connect_start = 0
 
 # Colors
 BG = (13, 17, 23)
@@ -153,7 +154,7 @@ def fetch_incidents():
 
 def update():
     global font, last_fetch, status_text, error_msg, cached_error_msg
-    global wifi_enabled, wlan, connect_attempted, last_wifi_check, wifi_was_connected
+    global wifi_enabled, wlan, connect_attempted, last_wifi_check, wifi_was_connected, wifi_connect_start
     
     screen.brush = brushes.color(*BG)
     screen.clear()
@@ -194,6 +195,10 @@ def update():
                     try:
                         wlan.connect(WIFI_SSID, WIFI_PASSWORD)  # type: ignore
                         connect_attempted = True
+                        try:
+                            wifi_connect_start = io.ticks
+                        except Exception:
+                            wifi_connect_start = 0
                     except Exception as e:
                         status_text = "WiFi error"
                         error_msg = str(e)[:30]
@@ -214,6 +219,7 @@ def update():
             wlan = None
             connect_attempted = False
             wifi_was_connected = False
+            wifi_connect_start = 0
 
     # Periodic WiFi status check
     if wifi_enabled and connect_attempted and wlan:
@@ -233,6 +239,25 @@ def update():
                             error_msg = str(e)[:30]
                 else:
                     wifi_was_connected = False
+                    # Show status code, and timeout after 15s
+                    try:
+                        st = wlan.status()
+                        status_text = f"WiFi status: {st}"
+                    except Exception:
+                        pass
+                    try:
+                        if wifi_connect_start and (io.ticks - wifi_connect_start > 15000):
+                            status_text = "WiFi failed"
+                            error_msg = "Timeout or credentials"
+                            try:
+                                wlan.active(False)
+                            except Exception:
+                                pass
+                            wifi_enabled = False
+                            connect_attempted = False
+                            wifi_connect_start = 0
+                    except Exception:
+                        pass
             except Exception:
                 pass
 
