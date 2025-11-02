@@ -4,8 +4,6 @@ Provides drawing utilities for background, title/header, buttons and status bars
 These functions only render to the global `screen` and don't mutate external state.
 """
 
-from __future__ import annotations
-
 import math
 
 from badgeware import screen, brushes, SpriteSheet, shapes, PixelFont, io

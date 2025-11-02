@@ -4,10 +4,6 @@ Use the A/C/UP/DOWN buttons to steer. Eat the commit to grow and score.
 Wrap-around at edges is enabled; colliding with yourself ends the game.
 """
 
-from __future__ import annotations
-
-from typing import List, Tuple
-
 from badgeware import screen, PixelFont, shapes, brushes, io, run
 import random
 
@@ -45,14 +41,14 @@ class Snake:
         # Start in the middle
         start_x = GRID_WIDTH // 2
         start_y = GRID_HEIGHT // 2
-        self.segments: List[Tuple[int, int]] = [
+        self.segments = [
             (start_x, start_y),
             (start_x - 1, start_y),
             (start_x - 2, start_y),
         ]
-        self.direction: Tuple[int, int] = (1, 0)  # Moving right
-        self.next_direction: Tuple[int, int] = (1, 0)
-        self.grow_pending: int = 0
+        self.direction = (1, 0)  # Moving right
+        self.next_direction = (1, 0)
+        self.grow_pending = 0
     
     def set_direction(self, dx: int, dy: int) -> None:
         # Prevent reversing direction
