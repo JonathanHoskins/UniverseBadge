@@ -269,11 +269,7 @@ def draw_stats_view():
         visible_stats = stats[stats_scroll:stats_scroll + ITEMS_PER_PAGE]
         for item in visible_stats:
             # Unpack with optional color override
-            if len(item) == 3:
-                label, value, color_override = item
-            else:
-                label, value = item
-                color_override = None
+            label, value, color_override = item
             
             # Draw label in dim color
             screen.brush = brushes.color(*DIM)
