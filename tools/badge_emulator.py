@@ -31,6 +31,13 @@ if str(REPO) not in sys.path:
 import badgeware as bw  # type: ignore
 io = bw.io
 
+# Also ensure network and socket are available from stubs
+# This allows WiFi and HC911 apps to work with real network on desktop
+import network  # type: ignore
+import socket  # type: ignore
+sys.modules['network'] = network
+sys.modules['socket'] = socket
+
 # Display constants
 SCALE = 4  # scale drawing for better visibility
 WIDTH, HEIGHT = 160, 120
