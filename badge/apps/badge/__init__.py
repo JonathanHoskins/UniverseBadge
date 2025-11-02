@@ -1,8 +1,9 @@
+import sys
+import os
+
 sys.path.insert(0, "/system/apps/badge")
 os.chdir("/system/apps/badge")
 
-import sys
-import os
 import math
 import network
 from badgeware import io, brushes, shapes, Image, run, PixelFont, screen, Matrix, file_exists

@@ -7,17 +7,15 @@ These functions only render to the global `screen` and don't mutate external sta
 from __future__ import annotations
 
 import math
-from typing import List, Tuple
 
 from badgeware import screen, brushes, SpriteSheet, shapes, PixelFont, io
-from badge.common import FONT_ARK
 
 # load user interface sprites
 icons = SpriteSheet("assets/icons.png", 4, 1)
 arrows = SpriteSheet("assets/arrows.png", 3, 1)
 
 # load in the font - font sheet generated from
-screen.font = PixelFont.load(FONT_ARK)
+screen.font = PixelFont.load("/system/assets/fonts/ark.ppf")
 
 # brushes to match monas stats
 stats_brushes = {

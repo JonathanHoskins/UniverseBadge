@@ -1,3 +1,6 @@
+import sys
+import os
+
 sys.path.insert(0, "/system/apps/quest")
 os.chdir("/system/apps/quest")
 from badgeware import State, PixelFont, Image, brushes, screen, io, shapes, run

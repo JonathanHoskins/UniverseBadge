@@ -1,3 +1,6 @@
+import sys
+import os
+
 sys.path.insert(0, "/system/apps/sketch")
 os.chdir("/system/apps/sketch")
 from badgeware import Image, brushes, shapes, screen, io, run

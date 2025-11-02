@@ -9,13 +9,12 @@ from __future__ import annotations
 import math
 from typing import List
 from badgeware import *
-from badge.common import FONT_IGNORE, FONT_ARK
 
 screen.antialias = Image.X2
 
 mona = Image.load("assets/mona.png")
-large_font = PixelFont.load(FONT_IGNORE)
-small_font = PixelFont.load(FONT_ARK)
+large_font = PixelFont.load("/system/assets/fonts/ignore.ppf")
+small_font = PixelFont.load("/system/assets/fonts/ark.ppf")
 
 tile_colors = [
   None,
