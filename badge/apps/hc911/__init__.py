@@ -56,7 +56,6 @@ def fetch_incidents():
             print("[hc911] SSL NOT available")
         
         # Check WiFi connection
-        global wlan
         print(f"[hc911] Checking WiFi: wlan={wlan}")
         if not (wlan and wlan.isconnected()):
             print("[hc911] WiFi not connected!")
@@ -288,7 +287,7 @@ def _start_fetch_async(allow_sync_fallback=True):
 
 
 def update():
-    global font, last_fetch, status_text, error_msg, cached_error_msg
+    global font, last_fetch, status_text, error_msg
     global wifi_enabled, wlan, connect_attempted, last_wifi_check, wifi_was_connected, wifi_connect_start
     
     screen.brush = brushes.color(*BG)
