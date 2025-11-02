@@ -226,7 +226,7 @@ game = GameOfLife()
 show_info = False
 info_timer = 0
 
-def update() -> None:
+def update():
     global show_info, info_timer
     _clear_screen()
     _handle_input()
@@ -236,12 +236,12 @@ def update() -> None:
 
 
 # --- Helper Functions for update ---
-def _clear_screen() -> None:
+def _clear_screen():
     """Fill the display with the background color."""
     screen.brush = BACKGROUND_BRUSH
     screen.clear()
 
-def _handle_input() -> None:
+def _handle_input():
     """Regenerate the board on B press and show a temporary message."""
     global show_info, info_timer
     if io.BUTTON_B in io.pressed:
@@ -249,17 +249,17 @@ def _handle_input() -> None:
         show_info = True
         info_timer = io.ticks + 1000  # Show "Regenerated" for 1 second
 
-def _maybe_update_game_logic() -> None:
+def _maybe_update_game_logic():
     """Advance simulation at a fixed interval based on ticks."""
     if io.ticks - game.last_update > game.update_interval:
         game.last_update = io.ticks
         game.update()
 
-def _draw_grid() -> None:
+def _draw_grid():
     """Draw the current grid using neighbor-based color shading."""
     game.draw()
 
-def _show_info_message() -> None:
+def _show_info_message():
     """Render the temporary info banner when recently regenerated."""
     global show_info, info_timer
     if show_info and io.ticks < info_timer:
