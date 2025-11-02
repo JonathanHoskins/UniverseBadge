@@ -18,6 +18,7 @@ wifi_enabled = False
 wlan = None
 connect_attempted = False
 last_wifi_check = 0
+wifi_was_connected = False
 
 # Colors
 BG = (13, 17, 23)
@@ -132,7 +133,7 @@ def fetch_incidents():
 
 def update():
     global font, last_fetch, status_text, error_msg
-    global wifi_enabled, wlan, connect_attempted, last_wifi_check
+    global wifi_enabled, wlan, connect_attempted, last_wifi_check, wifi_was_connected
     
     screen.brush = brushes.color(*BG)
     screen.clear()
@@ -192,6 +193,7 @@ def update():
                 pass
             wlan = None
             connect_attempted = False
+            wifi_was_connected = False
 
     # Periodic WiFi status check
     if wifi_enabled and connect_attempted and wlan:
@@ -200,6 +202,17 @@ def update():
             try:
                 if wlan.isconnected():
                     status_text = "WiFi connected"
+                    if not wifi_was_connected and not fetching:
+                        # First time connection established: auto-fetch once
+                        wifi_was_connected = True
+                        last_fetch = io.ticks
+                        try:
+                            fetch_incidents()
+                        except Exception as e:
+                            status_text = "Error"
+                            error_msg = str(e)[:30]
+                else:
+                    wifi_was_connected = False
             except Exception:
                 pass
 
@@ -220,6 +233,14 @@ def update():
         indicator = (SUCCESS, "ON") if (wifi_enabled and wlan) else (ERROR, "OFF")
         screen.brush = brushes.color(*indicator[0])
         screen.text(indicator[1], 135, 3)
+        # Show a small spinner while WiFi is connecting
+        try:
+            if wifi_enabled and wlan and not wlan.isconnected():
+                color = SUCCESS if (io.ticks // 150) % 2 == 0 else BG
+                screen.brush = brushes.color(*color)
+                screen.draw(shapes.circle(152, 6, 2))
+        except Exception:
+            pass
     
     # Draw incident data
     if font:
