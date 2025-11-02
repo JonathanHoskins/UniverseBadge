@@ -1,0 +1,24 @@
+[tool.ruff]
+# Keep it lightweight and focused on obvious issues.
+line-length = 100
+select = ["E", "F", "B"]  # Add flake8-bugbear for a few extra safety checks
+ignore = [
+  # Many apps intentionally use wildcard imports for SDK-like APIs
+  "F403", "F405",
+  # Allow unused imports in platform-stubbed contexts
+  "F401",
+]
+exclude = [
+  "tests/_stubs/**",
+]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+follow_imports = "skip"
+warn_unused_ignores = false
+warn_redundant_casts = false
+warn_return_any = true
+warn_unused_configs = false
+allow_redefinition = true
+pretty = true
