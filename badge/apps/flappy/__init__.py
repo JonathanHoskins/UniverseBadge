@@ -32,7 +32,7 @@ class GameState:
 state = GameState.INTRO
 
 
-def update() -> None:
+def update():
     """Main update loop that dispatches per-state handlers."""
     draw_background()
 
