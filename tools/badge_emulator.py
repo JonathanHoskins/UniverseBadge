@@ -230,7 +230,6 @@ def _draw_menu():
 
 def _tk_bind_keys(root):
     """Bind keyboard keys to button inputs."""
-    global escape_pressed
     if tk is None:
         return
 
