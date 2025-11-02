@@ -14,6 +14,10 @@ yearly_total = None
 last_fetch = 0
 fetching = False
 error_msg = None
+wifi_enabled = False
+wlan = None
+connect_attempted = False
+last_wifi_check = 0
 
 # Colors
 BG = (13, 17, 23)
@@ -38,10 +42,10 @@ def fetch_incidents():
         import socket
         
         # Check WiFi connection
-        wlan = network.WLAN(network.STA_IF)
-        if not wlan.isconnected():
+        global wlan
+        if not (wlan and wlan.isconnected()):
             status_text = "WiFi not connected"
-            error_msg = "Enable WiFi first"
+            error_msg = "Press B to enable WiFi"
             fetching = False
             return
         
@@ -128,6 +132,7 @@ def fetch_incidents():
 
 def update():
     global font, last_fetch, status_text, error_msg
+    global wifi_enabled, wlan, connect_attempted, last_wifi_check
     
     screen.brush = brushes.color(*BG)
     screen.clear()
@@ -142,6 +147,62 @@ def update():
     if font:
         screen.font = font
     
+    # Handle WiFi toggle on B
+    if io.BUTTON_B in io.pressed:
+        wifi_enabled = not wifi_enabled
+        if wifi_enabled:
+            status_text = "WiFi: enabling..."
+            try:
+                import network  # type: ignore
+                # Load WiFi credentials
+                try:
+                    import sys
+                    sys.path.insert(0, "/")
+                    from secrets import WIFI_SSID, WIFI_PASSWORD  # type: ignore
+                    sys.path.pop(0)
+                except Exception as e:
+                    status_text = "Secrets error"
+                    error_msg = "Create /secrets.py"
+                    wifi_enabled = False
+                    connect_attempted = False
+                
+                if wifi_enabled:
+                    wlan = network.WLAN(network.STA_IF)
+                    wlan.active(True)
+                    status_text = "Connecting WiFi..."
+                    try:
+                        wlan.connect(WIFI_SSID, WIFI_PASSWORD)  # type: ignore
+                        connect_attempted = True
+                    except Exception as e:
+                        status_text = "WiFi error"
+                        error_msg = str(e)[:30]
+                        wifi_enabled = False
+                        connect_attempted = False
+            except Exception as e:
+                status_text = "Network error"
+                error_msg = str(e)[:30]
+                wifi_enabled = False
+                connect_attempted = False
+        else:
+            status_text = "WiFi disabled"
+            try:
+                if wlan:
+                    wlan.active(False)
+            except Exception:
+                pass
+            wlan = None
+            connect_attempted = False
+
+    # Periodic WiFi status check
+    if wifi_enabled and connect_attempted and wlan:
+        if io.ticks - last_wifi_check > 1000:  # every second
+            last_wifi_check = io.ticks
+            try:
+                if wlan.isconnected():
+                    status_text = "WiFi connected"
+            except Exception:
+                pass
+
     # Handle fetch button
     if io.BUTTON_A in io.pressed and not fetching:
         last_fetch = io.ticks
@@ -155,6 +216,10 @@ def update():
     if font:
         screen.brush = brushes.color(*TEXT)
         screen.text("HC 911 Incidents", 5, 3)
+        # WiFi indicator
+        indicator = (SUCCESS, "ON") if (wifi_enabled and wlan) else (ERROR, "OFF")
+        screen.brush = brushes.color(*indicator[0])
+        screen.text(indicator[1], 135, 3)
     
     # Draw incident data
     if font:
@@ -214,7 +279,7 @@ def update():
         if fetching:
             screen.text("Fetching...", 5, 108)
         else:
-            screen.text("A:Refresh", 5, 108)
+            screen.text("A:Refresh  B:WiFi", 5, 108)
     
     # Activity indicator
     if fetching:
