@@ -26,11 +26,11 @@ def test_each_app_runs_one_update():
         "badge",   # requires network/machine/powman
         "quest",   # IR beacon and external libs
         "tv-remote",  # IR beacon and external libs
-        "gallery", # file system expectations
-        "monapet", # heavy sprite/UI coupling
+        "gallery",  # file system expectations
+        "monapet",  # heavy sprite/UI coupling
         "sketch",  # UI module coupling
-        "hc911",   # requires network for HTTP requests
-        "wifi",    # requires network module
+        "hc911",  # requires network for HTTP requests
+        "wifi",  # requires network module
         # Intentionally include 'dvd' and 'menu' now that stubs + preload handle them
     }
     for app in discover_apps():
