@@ -36,11 +36,13 @@ def fetch_incidents():
     """Fetch incident data from Hamilton County 911 website."""
     global active_incidents, daily_total, yearly_total, status_text, error_msg, fetching, last_error_time, cached_error_msg
     
+    print("[hc911] ========== FETCH STARTED ==========")
     fetching = True
     status_text = "Fetching..."
     error_msg = None
     
     try:
+        print("[hc911] Importing network modules")
         # Import network modules
         import network  # type: ignore
         import socket
@@ -49,12 +51,16 @@ def fetch_incidents():
         try:
             import ssl
             has_ssl = True
+            print("[hc911] SSL available")
         except ImportError:
             has_ssl = False
+            print("[hc911] SSL NOT available")
         
         # Check WiFi connection
         global wlan
+        print(f"[hc911] Checking WiFi: wlan={wlan}")
         if not (wlan and wlan.isconnected()):
+            print("[hc911] WiFi not connected!")
             status_text = "WiFi not connected"
             error_msg = "Press B to enable WiFi"
             cached_error_msg = error_msg
@@ -65,16 +71,30 @@ def fetch_incidents():
             fetching = False
             return
         
+        print("[hc911] WiFi OK, defining _https_get")
+        
         # Helper: minimal HTTPS GET with optional headers and chunked decoding
         def _https_get(host, path, extra_headers=None):
             addr = socket.getaddrinfo(host, 443)[0][-1]
             s = socket.socket()
-            s.settimeout(10)
+            # Keep timeouts short so UI remains responsive if run on main thread
+            s.settimeout(5)
             s.connect(addr)
             if has_ssl:
+                # Try SNI first; fall back to no-SNI (common on MicroPython)
                 try:
                     s = ssl.wrap_socket(s, server_hostname=host)
-                except (AttributeError, TypeError):
+                except TypeError:
+                    try:
+                        s = ssl.wrap_socket(s)
+                    except Exception:
+                        pass
+                except AttributeError:
+                    try:
+                        s = ssl.wrap_socket(s)
+                    except Exception:
+                        pass
+                except Exception:
                     try:
                         context = ssl.create_default_context()
                         s = context.wrap_socket(s, server_hostname=host)
@@ -105,7 +125,14 @@ def fetch_incidents():
             sep = resp.find(b"\r\n\r\n")
             if sep == -1:
                 return resp
-            raw_headers = resp[:sep].decode("utf-8", errors="ignore")
+            # MicroPython bytes.decode may not accept keyword args; use positional only
+            try:
+                raw_headers = resp[:sep].decode("utf-8")
+            except Exception:
+                try:
+                    raw_headers = resp[:sep].decode("latin-1")
+                except Exception:
+                    raw_headers = str(resp[:sep])
             body = resp[sep+4:]
             if "Transfer-Encoding: chunked" in raw_headers:
                 # dechunk
@@ -130,49 +157,91 @@ def fetch_incidents():
 
         # Fetch totals (yearly, daily)
         import json as _json
+        global yearly_total, daily_total, active_incidents
+        
+        fetch_error = None
         try:
+            print("[hc911] Fetching /api/count")
             b = _https_get("hc911server.com", "/api/count")
-            data = _json.loads(b.decode("utf-8", errors="ignore"))
+            print(f"[hc911] Count response length: {len(b)}")
+            print(f"[hc911] Count response (first 200 bytes): {b[:200]}")
+            # Decode body without keyword args for compatibility
+            try:
+                body_text = b.decode("utf-8")
+            except Exception:
+                try:
+                    body_text = b.decode("latin-1")
+                except Exception:
+                    body_text = str(b)
+            data = _json.loads(body_text)
+            print(f"[hc911] Count parsed: {data}")
             # Expect [[{"": YEARLY}], [{"": DAILY}]]
             try:
                 yearly_total = int(list(data[0][0].values())[0])
                 daily_total = int(list(data[1][0].values())[0])
-            except Exception:
+                print(f"[hc911] Success: yearly={yearly_total}, daily={daily_total}")
+            except Exception as e:
+                print(f"[hc911] Count parse failed: {e}")
+                fetch_error = f"Parse: {str(e)[:40]}"
                 pass
-        except Exception:
+        except Exception as e:
+            print(f"[hc911] Count fetch failed: {e}")
+            fetch_error = f"Fetch: {str(e)[:40]}"
             # leave totals as-is
             pass
 
-        # Try to fetch current active incidents (requires token)
+        # Try to fetch current active incidents count (uses public header by default)
         try:
+            print("[hc911] Fetching /api/calls")
             # Load optional token from secrets if available
             try:
                 import sys as _sys
                 _sys.path.insert(0, "/")
                 from secrets import HC911_TOKEN  # type: ignore
                 _sys.path.pop(0)
+                print("[hc911] Using secrets token")
             except Exception:
                 HC911_TOKEN = None  # type: ignore
-            headers = {}
-            if HC911_TOKEN:
-                headers["X-Frontend-Auth"] = HC911_TOKEN  # type: ignore
-                headers["Origin"] = "https://www.hamiltontn911.gov"
-                b = _https_get("hc911server.com", "/api/calls", headers)
-                data = _json.loads(b.decode("utf-8", errors="ignore"))
-                if isinstance(data, list):
-                    active_incidents = len(data)
-        except Exception:
+                print("[hc911] Using default token")
+            # Default to the public header observed on the site
+            token = HC911_TOKEN or "my-secure-token"  # type: ignore
+            headers = {
+                "X-Frontend-Auth": token,
+                "Origin": "https://www.hamiltontn911.gov",
+            }
+            b = _https_get("hc911server.com", "/api/calls", headers)
+            print(f"[hc911] Calls response length: {len(b)}")
+            print(f"[hc911] Calls response (first 200 bytes): {b[:200]}")
+            try:
+                body_text = b.decode("utf-8")
+            except Exception:
+                try:
+                    body_text = b.decode("latin-1")
+                except Exception:
+                    body_text = str(b)
+            data = _json.loads(body_text)
+            print(f"[hc911] Calls type: {type(data)}, is_list: {isinstance(data, list)}")
+            if isinstance(data, list):
+                active_incidents = len(data)
+                print(f"[hc911] Active incidents: {active_incidents}")
+        except Exception as e:
+            print(f"[hc911] Calls fetch failed: {e}")
             # Ignore if unauthorized or failed
             pass
         
+        print(f"[hc911] Final state: daily={daily_total}, yearly={yearly_total}, active={active_incidents}")
         if (daily_total is not None and yearly_total is not None) or (active_incidents is not None):
-            status_text = "Updated"
+            # Data available; clear transient WiFi message
+            status_text = ""
+            print("[hc911] SUCCESS")
             # Clear any previous error indicator on success
             last_error_time = 0
             cached_error_msg = None
         else:
+            print("[hc911] FAILED - no data")
             status_text = "Parse error"
-            error_msg = "Could not find data"
+            # Show which values are None for debugging
+            error_msg = fetch_error if fetch_error else "All APIs failed"
             cached_error_msg = error_msg
             try:
                 last_error_time = io.ticks
@@ -180,6 +249,9 @@ def fetch_incidents():
                 pass
         
     except Exception as e:
+        print(f"[hc911] EXCEPTION in fetch: {e}")
+        import sys
+        sys.print_exception(e)
         status_text = "Error"
         error_msg = str(e)[:30]
         cached_error_msg = error_msg
@@ -188,7 +260,32 @@ def fetch_incidents():
         except Exception:
             pass
     finally:
+        print("[hc911] ========== FETCH ENDED ==========")
         fetching = False
+
+
+def _start_fetch_async(allow_sync_fallback=True):
+    """Kick off a fetch in a background thread when available to avoid UI freezes.
+    If threading isn't supported and allow_sync_fallback is True, runs synchronously; otherwise, skips."""
+    global fetching, status_text, error_msg
+    if fetching:
+        return
+    try:
+        import _thread  # type: ignore
+        # Start threaded fetch
+        status_text = "Fetching..."
+        error_msg = None
+        fetching = True
+        _thread.start_new_thread(fetch_incidents, ())
+    except Exception:
+        # No threading support
+        if allow_sync_fallback:
+            fetch_incidents()
+        else:
+            # Avoid blocking the UI on auto-fetch when threads are unavailable
+            status_text = "Press A to fetch"
+            error_msg = None
+            fetching = False
 
 
 def update():
@@ -210,18 +307,23 @@ def update():
     
     # Handle WiFi toggle on B
     if io.BUTTON_B in io.pressed:
+        print(f"[hc911] Button B pressed, wifi_enabled={wifi_enabled}")
         wifi_enabled = not wifi_enabled
         if wifi_enabled:
+            print("[hc911] Enabling WiFi...")
             status_text = "WiFi: enabling..."
             try:
                 import network  # type: ignore
+                print("[hc911] Network module imported")
                 # Load WiFi credentials
                 try:
                     import sys
                     sys.path.insert(0, "/")
                     from secrets import WIFI_SSID, WIFI_PASSWORD  # type: ignore
                     sys.path.pop(0)
+                    print(f"[hc911] Loaded credentials: SSID={WIFI_SSID}")
                 except Exception as e:
+                    print(f"[hc911] Secrets load error: {e}")
                     status_text = "Secrets error"
                     error_msg = "Create /secrets.py"
                     wifi_enabled = False
@@ -230,25 +332,30 @@ def update():
                 if wifi_enabled:
                     wlan = network.WLAN(network.STA_IF)
                     wlan.active(True)
+                    print(f"[hc911] WLAN active, connecting to {WIFI_SSID}")
                     status_text = "Connecting WiFi..."
                     try:
                         wlan.connect(WIFI_SSID, WIFI_PASSWORD)  # type: ignore
                         connect_attempted = True
+                        print("[hc911] Connect command sent")
                         try:
                             wifi_connect_start = io.ticks
                         except Exception:
                             wifi_connect_start = 0
                     except Exception as e:
+                        print(f"[hc911] Connect error: {e}")
                         status_text = "WiFi error"
                         error_msg = str(e)[:30]
                         wifi_enabled = False
                         connect_attempted = False
             except Exception as e:
+                print(f"[hc911] Network error: {e}")
                 status_text = "Network error"
                 error_msg = str(e)[:30]
                 wifi_enabled = False
                 connect_attempted = False
         else:
+            print("[hc911] Disabling WiFi")
             status_text = "WiFi disabled"
             try:
                 if wlan:
@@ -265,17 +372,26 @@ def update():
         if io.ticks - last_wifi_check > 1000:  # every second
             last_wifi_check = io.ticks
             try:
-                if wlan.isconnected():
-                    status_text = "WiFi connected"
+                is_connected = wlan.isconnected()
+                status = wlan.status()
+                print(f"[hc911] WiFi check: connected={is_connected}, status={status}")
+                
+                if is_connected:
                     if not wifi_was_connected and not fetching:
                         # First time connection established: auto-fetch once
+                        print("[hc911] AUTO-FETCH triggered")
                         wifi_was_connected = True
+                        status_text = "Fetching..."  # Clear "WiFi connected" immediately
                         last_fetch = io.ticks
                         try:
-                            fetch_incidents()
+                            _start_fetch_async(allow_sync_fallback=False)
                         except Exception as e:
+                            print(f"[hc911] Auto-fetch exception: {e}")
                             status_text = "Error"
                             error_msg = str(e)[:30]
+                    elif (active_incidents is None and daily_total is None and yearly_total is None) and not fetching and wifi_was_connected:
+                        # Connected but no data and not currently fetching - show hint
+                        status_text = "Press A to fetch"
                 else:
                     wifi_was_connected = False
                     # Show status code, and timeout after 15s
@@ -302,13 +418,15 @@ def update():
 
     # Handle fetch button
     if io.BUTTON_A in io.pressed and not fetching:
+        print("[hc911] BUTTON A pressed - manual fetch")
         # If there's a cached error (even if expired), show it briefly as tooltip
         if cached_error_msg and not error_msg:
             error_msg = f"Last: {cached_error_msg}"
         last_fetch = io.ticks
         try:
-            fetch_incidents()
+            _start_fetch_async()
         except Exception as e:
+            print(f"[hc911] Manual fetch exception: {e}")
             status_text = "Error"
             error_msg = str(e)[:30]
     
@@ -376,10 +494,21 @@ def update():
                 else:
                     screen.text(f"Updated {secs}s ago", 5, y)
         else:
-            # No data yet
+            # No data yet - show debug info
             screen.brush = brushes.color(*DIM)
-            screen.text("No data loaded", 5, 35)
-            screen.text("Press A to fetch", 5, 47)
+            
+            # Show WiFi status if available
+            if wlan and connect_attempted:
+                try:
+                    is_conn = wlan.isconnected()
+                    stat = wlan.status()
+                    screen.text(f"WiFi: conn={is_conn}", 5, 20)
+                    screen.text(f"Status: {stat}", 5, 32)
+                except Exception:
+                    pass
+            
+            screen.text("No data loaded", 5, 47)
+            screen.text("Press A to fetch", 5, 59)
     
     # Draw status
     if font:
@@ -388,7 +517,7 @@ def update():
         
         if error_msg:
             screen.brush = brushes.color(*ERROR)
-            screen.text(error_msg[:26], 5, 92)
+            screen.text(error_msg[:36], 5, 92)
     
     # Draw instructions
     if font:
@@ -397,7 +526,7 @@ def update():
             screen.text("Fetching...", 5, 108)
         else:
             screen.text("A:Refresh  B:WiFi", 5, 108)
-    
+
     # Activity indicator
     if fetching:
         try:
@@ -406,7 +535,7 @@ def update():
             screen.draw(shapes.circle(4, 4, 2))
         except Exception:
             pass
-    
+
     return None
-    
+
     return None
