@@ -1,21 +1,14 @@
-"""Common constants and tiny helpers shared across apps.
-These values mirror the badge's screen dimensions, common colors,
-and font asset paths used throughout the apps.
-"""
+"""Shared constants and utilities for badge apps."""
 
-# Screen
-SCREEN_WIDTH: int = 160
-SCREEN_HEIGHT: int = 120
+# Screen dimensions
+SCREEN_WIDTH = 296
+SCREEN_HEIGHT = 128
 
-# Colors (RGB tuples)
-WHITE: tuple[int, int, int] = (255, 255, 255)
-PHOSPHOR: tuple[int, int, int] = (211, 250, 55)
-GITHUB_DARK_BG: tuple[int, int, int] = (13, 17, 23)
+# Common colors
+WHITE = (255, 255, 255)
+PHOSPHOR = (192, 255, 62)
+GITHUB_DARK_BG = (13, 17, 23)
 
 # Font paths
-FONT_NOPE: str = "/system/assets/fonts/nope.ppf"
-FONT_ARK: str = "/system/assets/fonts/ark.ppf"
-FONT_ZIPLOCK: str = "/system/assets/fonts/ziplock.ppf"
-FONT_ABSOLUTE: str = "/system/assets/fonts/absolute.ppf"
-FONT_VEST: str = "/system/assets/fonts/vest.ppf"
-FONT_IGNORE: str = "/system/assets/fonts/ignore.ppf"
+FONT_ZIPLOCK = "assets/fonts/ziplock.ppf"
+FONT_NOPE = "assets/fonts/nope.ppf"

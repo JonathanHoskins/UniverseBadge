@@ -11,7 +11,7 @@ def _install_badgeware_stub():
     stubs_dir = Path(__file__).parent / "_stubs"
     if str(stubs_dir) not in sys.path:
         sys.path.insert(0, str(stubs_dir))
-    
+
     # Ensure repo root is on sys.path so `badge` package can be imported
     repo_root = Path(__file__).resolve().parents[1]
     if str(repo_root) not in sys.path:
@@ -26,9 +26,11 @@ def _install_os_chdir_noop():
     # Copy attributes from real os
     for name in dir(_real_os):
         setattr(proxy, name, getattr(_real_os, name))
+
     # Override chdir to noop
     def _noop_chdir(_path):
         return None
+
     proxy.chdir = _noop_chdir  # type: ignore[attr-defined]
     sys.modules["os"] = proxy
     sys._badge_tests_os_stub = True  # type: ignore[attr-defined]
@@ -52,9 +54,9 @@ def _preload_sibling_modules(app_name: str):
     if app_name == "flappy":
         # Ensure obstacle comes before mona
         siblings = sorted(siblings, key=lambda p: (p.stem != "obstacle", p.stem))
-    
+
     modules_to_exec = []
-    
+
     for py in siblings:
         mod_name = f"badge.apps.{app_name}.{py.stem}"
         if mod_name not in sys.modules:
@@ -68,39 +70,32 @@ def _preload_sibling_modules(app_name: str):
                     modules_to_exec.append((spec, mod))
             except Exception as ex:
                 print(f"Warning: Failed to create module spec for {mod_name}: {ex}")
-    
+
     # Now execute all the modules in a second pass
     for spec, mod in modules_to_exec:
         try:
             if spec.loader:
-                spec.loader.exec_module(mod)  # type: ignore[attr-defined]
+                spec.loader.exec_module(mod)
         except Exception as ex:
-            print(f"Warning: Failed to execute module {spec.name}: {ex}")
-            # If a sibling fails to import it's fine; the top-level import may not need it
+            print(f"Warning: Failed to execute {spec.name}: {ex}")
 
 
-def pytest_sessionstart(session):  # noqa: D401
-    """Session start hook to install stubs before any tests import the apps."""
-    _install_badgeware_stub()
-    _install_os_chdir_noop()
-
-
-def prepare_app_import(app_name: str):
-    """Utility for tests to ready the environment before importing an app."""
+def _import_app(app_name: str):
     _install_badgeware_stub()
     _install_os_chdir_noop()
     _preload_sibling_modules(app_name)
-    # Provide minimal UI shims for apps that expect a local 'ui' module (e.g., menu)
-    if app_name == "menu":
-        ui = sys.modules.get("ui")
-        if ui is None:
-            ui = ModuleType("ui")
-            sys.modules["ui"] = ui
-        if not hasattr(ui, "draw_background"):
-            def _bg():
-                return None
-            ui.draw_background = _bg  # type: ignore[attr-defined]
-        if not hasattr(ui, "draw_header"):
-            def _hdr():
-                return None
-            ui.draw_header = _hdr  # type: ignore[attr-defined]
+    # Now import the app's __init__.py
+    app_module = importlib.import_module(f"badge.apps.{app_name}")
+    return app_module
+
+
+import pytest
+
+
+@pytest.fixture
+def import_app():
+    """
+    Fixture to import an app module with all necessary stubs and preloads.
+    Usage: app = import_app('flappy')
+    """
+    return _import_app

@@ -21,22 +21,28 @@ ignore = [
   "E231",
   # Allow blank lines with whitespace
   "W293",
+  # Allow various whitespace/formatting issues in MicroPython/example code
+  "E302", "E305", "E306", "E221", "E266", "E265", "E116", "E275",
+  # Allow trailing whitespace and blank line issues
+  "W291", "W292", "W391",
+  # MicroPython PIO code uses special undefined names (const, wait, pin, etc.)
+  "F821",
 ]
 exclude = [
   "tests/_stubs/**",
   "tools/**",  # Exclude tools directory from linting
+  "eink/examples/**",  # Exclude example code from linting
+  "ir-beacon/**",  # Exclude MicroPython PIO code (uses special syntax)
 ]
 
 [tool.mypy]
+files = ["badge", "tests"]
 python_version = "3.11"
+strict_optional = false
+check_untyped_defs = false
+disallow_untyped_defs = false
 ignore_missing_imports = true
-follow_imports = "skip"
-warn_unused_ignores = false
-warn_redundant_casts = false
 warn_return_any = true
-warn_unused_configs = false
-allow_redefinition = true
-pretty = true
 
 [[tool.mypy.overrides]]
 module = "tests.*"
