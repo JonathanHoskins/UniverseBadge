@@ -127,7 +127,7 @@ def fetch_incidents():
 
 
 def update():
-    global font, last_fetch, status_text
+    global font, last_fetch, status_text, error_msg
     
     screen.brush = brushes.color(*BG)
     screen.clear()
