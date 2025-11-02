@@ -4,9 +4,12 @@ This app implements a side-scrolling game inspired by Flappy Bird using
 badgeware primitives. The update loop is decomposed into small helpers for
 intro, gameplay, and game-over states. Fonts are sourced from shared constants.
 """
+sys.path.insert(0, "/system/apps/flappy")
+os.chdir("/system/apps/flappy")
+
 import sys
 import os
-
+import gc
 sys.path.insert(0, "/system/apps/flappy")
 os.chdir("/system/apps/flappy")
 
@@ -56,8 +59,11 @@ def intro():
     _draw_intro_ui()
     if _should_start_game():
         state = GameState.PLAYING
-        Obstacle.obstacles = []
+        # Clear all obstacles and Mona instance
+        Obstacle.obstacles.clear()
         Obstacle.next_spawn_time = io.ticks + 500
+        mona = None
+        gc.collect()  # Free memory before creating new Mona
         mona = Mona()
 
 # handle the main game loop and user input. each tick we'll update the game
@@ -82,9 +88,13 @@ def play():
 
 def game_over():
     """Render game-over UI and return to intro when A is pressed."""
-    global state
+    global state, mona
     _draw_game_over_ui()
     if _should_restart():
+        # Clear all obstacles and Mona instance before returning to intro
+        Obstacle.obstacles.clear()
+        mona = None
+        gc.collect()
         state = GameState.INTRO
 
 
