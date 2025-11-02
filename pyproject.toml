@@ -23,6 +23,6 @@ warn_unused_configs = false
 allow_redefinition = true
 pretty = true
 
-[tool.mypy-tests.*]
-# Ignore type errors inside tests to keep CI signal focused on app code.
+[[tool.mypy.overrides]]
+module = "tests.*"
 ignore_errors = true

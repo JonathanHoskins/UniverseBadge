@@ -132,34 +132,36 @@ def _should_start_game() -> bool:
 
 def _handle_play_input() -> None:
     """Handle in-game input (jump on A) while alive."""
-    if not mona.is_dead() and io.BUTTON_A in io.pressed:
+    if mona and not mona.is_dead() and io.BUTTON_A in io.pressed:
         mona.jump()
 
 def _update_player() -> None:
     """Advance player physics/animation one tick."""
-    mona.update()
+    if mona:
+        mona.update()
 
 def _spawn_obstacles_if_needed() -> None:
     """Spawn obstacles on a schedule while player is alive."""
-    if not mona.is_dead() and Obstacle.next_spawn_time and io.ticks > Obstacle.next_spawn_time:
+    if mona and not mona.is_dead() and Obstacle.next_spawn_time and io.ticks > Obstacle.next_spawn_time:
         Obstacle.spawn()
 
 def _update_and_draw_obstacles() -> None:
     """Update active obstacles (if alive) and draw them."""
     for obstacle in Obstacle.obstacles:
-        if not mona.is_dead():
+        if mona and not mona.is_dead():
             obstacle.update()
         obstacle.draw()
 
 def _draw_player_and_score() -> None:
     """Draw the player and current score in the HUD."""
-    mona.draw()
-    screen.font = small_font
-    shadow_text(f"Score: {mona.score}", 3, 0)
+    if mona:
+        mona.draw()
+        screen.font = small_font
+        shadow_text(f"Score: {mona.score}", 3, 0)
 
 def _is_game_over() -> bool:
     """Return True when the player has finished the death animation."""
-    if mona.is_dead() and mona.is_done_dying():
+    if mona and mona.is_dead() and mona.is_done_dying():
         return True
     return False
 
@@ -168,7 +170,8 @@ def _draw_game_over_ui() -> None:
     screen.font = large_font
     center_text("GAME OVER!", 18)
     screen.font = small_font
-    center_text(f"Final score: {mona.score}", 40)
+    if mona:
+        center_text(f"Final score: {mona.score}", 40)
     if int(io.ticks / 500) % 2:
         screen.brush = brushes.color(255, 255, 255)
         center_text("Press A to restart", 70)
