@@ -8,10 +8,6 @@ Button mapping:
 - UP/DOWN: Scroll in stats view
 """
 
-from __future__ import annotations
-
-from typing import List, Optional, Tuple
-
 from badgeware import screen, PixelFont, shapes, brushes, io
 
 # UI state
@@ -36,7 +32,7 @@ DIM = (88, 96, 105)
 ITEMS_PER_PAGE = 4  # number of stats entries visible per screen
 
 
-def get_network_stats() -> List[Tuple[str, str, Optional[Tuple[int, int, int]]]]:
+def get_network_stats():
     """Collect network statistics for the current connection.
 
     Returns a list of tuples: (label, value, color_override).
