@@ -292,9 +292,11 @@ def draw_stats_view():
     
     # Draw scroll indicator if needed
     if font and len(stats) > ITEMS_PER_PAGE:
-        # Show current position: "item X of Y"
+        # Show page number: which page we're viewing
+        current_page = (stats_scroll // ITEMS_PER_PAGE) + 1
+        total_pages = (len(stats) + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE
         screen.brush = brushes.color(*DIM)
-        screen.text(f"{stats_scroll + 1}/{len(stats)}", 110, 98)
+        screen.text(f"Page {current_page}/{total_pages}", 95, 98)
     
     # Draw instructions
     if font:
