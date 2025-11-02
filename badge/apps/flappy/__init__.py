@@ -50,7 +50,7 @@ def update() -> None:
 # tell the player how to start the game
 
 
-def intro() -> None:
+def intro():
     """Render intro UI and transition to PLAYING when A is pressed."""
     global state, mona
     _draw_intro_ui()
@@ -65,7 +65,7 @@ def intro() -> None:
 # draw the background and sprites
 
 
-def play() -> None:
+def play():
     """Advance gameplay: input, physics, spawning, draw; detect game over."""
     global state
     _handle_play_input()
@@ -80,7 +80,7 @@ def play() -> None:
 # provide instructions for how to start again
 
 
-def game_over() -> None:
+def game_over():
     """Render game-over UI and return to intro when A is pressed."""
     global state
     _draw_game_over_ui()
@@ -92,7 +92,7 @@ def game_over() -> None:
 background_offset = 0
 
 
-def draw_background() -> None:
+def draw_background():
     """Draw parallax sky, clouds, and grass with a scrolling offset."""
     global background_offset
     _clear_sky()
@@ -102,7 +102,7 @@ def draw_background() -> None:
 # a couple of helper functions for formatting text
 
 
-def shadow_text(text: str, x: int, y: int) -> None:
+def shadow_text(text, x, y):
     """Draw text with a subtle drop shadow at the given coordinates."""
     screen.brush = brushes.color(20, 40, 60, 100)
     screen.text(text, x + 1, y + 1)
@@ -110,14 +110,14 @@ def shadow_text(text: str, x: int, y: int) -> None:
     screen.text(text, x, y)
 
 
-def center_text(text: str, y: int) -> None:
+def center_text(text, y):
     """Horizontally center text at the provided y position."""
     w, _ = screen.measure_text(text)
     shadow_text(text, 80 - (w / 2), y)
 
 
 # --- Helper functions ---
-def _draw_intro_ui() -> None:
+def _draw_intro_ui():
     """Intro screen title and blinking prompt."""
     screen.font = large_font
     center_text("FLAPPY MONA", 38)
@@ -125,46 +125,46 @@ def _draw_intro_ui() -> None:
         screen.font = small_font
         center_text("Press A to start", 70)
 
-def _should_start_game() -> bool:
+def _should_start_game():
     """Return True if A was pressed to start the game."""
     return io.BUTTON_A in io.pressed
 
-def _handle_play_input() -> None:
+def _handle_play_input():
     """Handle in-game input (jump on A) while alive."""
     if mona and not mona.is_dead() and io.BUTTON_A in io.pressed:
         mona.jump()
 
-def _update_player() -> None:
+def _update_player():
     """Advance player physics/animation one tick."""
     if mona:
         mona.update()
 
-def _spawn_obstacles_if_needed() -> None:
+def _spawn_obstacles_if_needed():
     """Spawn obstacles on a schedule while player is alive."""
     if mona and not mona.is_dead() and Obstacle.next_spawn_time and io.ticks > Obstacle.next_spawn_time:
         Obstacle.spawn()
 
-def _update_and_draw_obstacles() -> None:
+def _update_and_draw_obstacles():
     """Update active obstacles (if alive) and draw them."""
     for obstacle in Obstacle.obstacles:
         if mona and not mona.is_dead():
             obstacle.update()
         obstacle.draw()
 
-def _draw_player_and_score() -> None:
+def _draw_player_and_score():
     """Draw the player and current score in the HUD."""
     if mona:
         mona.draw()
         screen.font = small_font
         shadow_text(f"Score: {mona.score}", 3, 0)
 
-def _is_game_over() -> bool:
+def _is_game_over():
     """Return True when the player has finished the death animation."""
     if mona and mona.is_dead() and mona.is_done_dying():
         return True
     return False
 
-def _draw_game_over_ui() -> None:
+def _draw_game_over_ui():
     """Game-over title, final score, and restart prompt."""
     screen.font = large_font
     center_text("GAME OVER!", 18)
@@ -175,22 +175,22 @@ def _draw_game_over_ui() -> None:
         screen.brush = brushes.color(255, 255, 255)
         center_text("Press A to restart", 70)
 
-def _should_restart() -> bool:
+def _should_restart():
     """Return True if A was pressed to restart from game-over."""
     return io.BUTTON_A in io.pressed
 
-def _clear_sky() -> None:
+def _clear_sky():
     """Fill the background with sky color."""
     screen.brush = brushes.color(73, 219, 255)
     screen.draw(shapes.rectangle(0, 0, 160, 120))
 
-def _update_background_offset() -> None:
+def _update_background_offset():
     """Increment parallax offset while intro or player alive."""
     global background_offset
     if not mona or not mona.is_dead() or state == GameState.INTRO:
         background_offset += 1
 
-def _draw_parallax_layers() -> None:
+def _draw_parallax_layers():
     """Render background, clouds, and grass with parallax scrolling."""
     for i in range(3):
         bo = ((-background_offset / 8) % background.width) - screen.width
