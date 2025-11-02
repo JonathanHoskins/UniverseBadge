@@ -1,12 +1,10 @@
+
 """Flappy Mona game.
 
 This app implements a side-scrolling game inspired by Flappy Bird using
 badgeware primitives. The update loop is decomposed into small helpers for
 intro, gameplay, and game-over states. Fonts are sourced from shared constants.
 """
-sys.path.insert(0, "/system/apps/flappy")
-os.chdir("/system/apps/flappy")
-
 import sys
 import os
 import gc
