@@ -45,6 +45,13 @@ def fetch_incidents():
         import network  # type: ignore
         import socket
         
+        # Try to import ssl for HTTPS support
+        try:
+            import ssl
+            has_ssl = True
+        except ImportError:
+            has_ssl = False
+        
         # Check WiFi connection
         global wlan
         if not (wlan and wlan.isconnected()):
@@ -58,75 +65,107 @@ def fetch_incidents():
             fetching = False
             return
         
-        # Parse URL
-        url = "www.hamiltontn911.gov"
-        path = "/active-incidents.php"
+        # Helper: minimal HTTPS GET with optional headers and chunked decoding
+        def _https_get(host, path, extra_headers=None):
+            addr = socket.getaddrinfo(host, 443)[0][-1]
+            s = socket.socket()
+            s.settimeout(10)
+            s.connect(addr)
+            if has_ssl:
+                try:
+                    s = ssl.wrap_socket(s, server_hostname=host)
+                except (AttributeError, TypeError):
+                    try:
+                        context = ssl.create_default_context()
+                        s = context.wrap_socket(s, server_hostname=host)
+                    except Exception:
+                        pass
+            # build request
+            headers = [
+                f"GET {path} HTTP/1.1",
+                f"Host: {host}",
+                "Connection: close",
+            ]
+            if extra_headers:
+                for k, v in extra_headers.items():
+                    headers.append(f"{k}: {v}")
+            req = "\r\n".join(headers) + "\r\n\r\n"
+            s.send(req.encode())
+            # receive
+            resp = b""
+            while True:
+                chunk = s.recv(1024)
+                if not chunk:
+                    break
+                resp += chunk
+                if len(resp) > 200000:
+                    break
+            s.close()
+            # split headers/body
+            sep = resp.find(b"\r\n\r\n")
+            if sep == -1:
+                return resp
+            raw_headers = resp[:sep].decode("utf-8", errors="ignore")
+            body = resp[sep+4:]
+            if "Transfer-Encoding: chunked" in raw_headers:
+                # dechunk
+                i = 0
+                out = b""
+                while True:
+                    j = body.find(b"\r\n", i)
+                    if j == -1:
+                        break
+                    size_str = body[i:j].split(b";")[0]
+                    try:
+                        size = int(size_str, 16)
+                    except Exception:
+                        break
+                    i = j + 2
+                    if size == 0:
+                        break
+                    out += body[i:i+size]
+                    i += size + 2  # skip CRLF
+                body = out
+            return body
+
+        # Fetch totals (yearly, daily)
+        import json as _json
+        try:
+            b = _https_get("hc911server.com", "/api/count")
+            data = _json.loads(b.decode("utf-8", errors="ignore"))
+            # Expect [[{"": YEARLY}], [{"": DAILY}]]
+            try:
+                yearly_total = int(list(data[0][0].values())[0])
+                daily_total = int(list(data[1][0].values())[0])
+            except Exception:
+                pass
+        except Exception:
+            # leave totals as-is
+            pass
+
+        # Try to fetch current active incidents (requires token)
+        try:
+            # Load optional token from secrets if available
+            try:
+                import sys as _sys
+                _sys.path.insert(0, "/")
+                from secrets import HC911_TOKEN  # type: ignore
+                _sys.path.pop(0)
+            except Exception:
+                HC911_TOKEN = None  # type: ignore
+            headers = {}
+            if HC911_TOKEN:
+                headers["X-Frontend-Auth"] = HC911_TOKEN  # type: ignore
+                headers["Origin"] = "https://www.hamiltontn911.gov"
+                b = _https_get("hc911server.com", "/api/calls", headers)
+                data = _json.loads(b.decode("utf-8", errors="ignore"))
+                if isinstance(data, list):
+                    active_incidents = len(data)
+        except Exception:
+            # Ignore if unauthorized or failed
+            pass
         
-        status_text = "Connecting..."
-        
-        # Create socket and connect
-        addr = socket.getaddrinfo(url, 80)[0][-1]
-        s = socket.socket()
-        s.settimeout(10)
-        s.connect(addr)
-        
-        # Send HTTP GET request
-        request = f"GET {path} HTTP/1.1\r\nHost: {url}\r\nConnection: close\r\n\r\n"
-        s.send(request.encode())
-        
-        status_text = "Receiving..."
-        
-        # Read response
-        response = b""
-        while True:
-            chunk = s.recv(512)
-            if not chunk:
-                break
-            response += chunk
-            if len(response) > 50000:  # Limit response size
-                break
-        
-        s.close()
-        
-        # Parse response
-        html = response.decode("utf-8", errors="ignore")
-        
-        # Extract incident counts using simple string search
-        # Format: "CURRENT ACTIVE INCIDENTS:  32"
-        active_idx = html.find("CURRENT ACTIVE INCIDENTS:")
-        daily_idx = html.find("DAILY TOTAL INCIDENTS:")
-        yearly_idx = html.find("YEARLY INCIDENTS:")
-        
-        if active_idx != -1:
-            # Extract number after the label
-            text = html[active_idx:active_idx+100]
-            # Find the number between the colon and next newline/tag
-            start = text.find(":") + 1
-            end = text.find("\n", start)
-            if end == -1:
-                end = text.find("<", start)
-            num_str = text[start:end].strip()
-            active_incidents = int(num_str)
-        
-        if daily_idx != -1:
-            text = html[daily_idx:daily_idx+100]
-            start = text.find(":") + 1
-            end = text.find("\n", start)
-            if end == -1:
-                end = text.find("<", start)
-            num_str = text[start:end].strip()
-            daily_total = int(num_str)
-        
-        if yearly_idx != -1:
-            text = html[yearly_idx:yearly_idx+100]
-            start = text.find(":") + 1
-            end = text.find("\n", start)
-            if end == -1:
-                end = text.find("<", start)
-            num_str = text[start:end].strip()
-            yearly_total = int(num_str)
-        
-        if active_incidents is not None:
+        if (daily_total is not None and yearly_total is not None) or (active_incidents is not None):
             status_text = "Updated"
             # Clear any previous error indicator on success
             last_error_time = 0
