@@ -25,6 +25,7 @@ SUCCESS = (46, 160, 67)
 ERROR = (248, 81, 73)
 WARNING = (255, 191, 0)
 DIM = (88, 96, 105)
+ITEMS_PER_PAGE = 4  # number of stats entries visible per screen
 
 
 def get_network_stats():
@@ -358,12 +359,13 @@ def draw_stats_view():
     
     # Get stats
     stats = get_network_stats()
-    max_stats_scroll = max(0, len(stats) - 8)
+    # Compute max scroll based on how many items fit on one page
+    max_stats_scroll = max(0, len(stats) - ITEMS_PER_PAGE)
     
     # Draw stats (scrollable)
     if font and stats:
         y = 20
-        visible_stats = stats[stats_scroll:stats_scroll + 8]
+        visible_stats = stats[stats_scroll:stats_scroll + ITEMS_PER_PAGE]
         for label, value in visible_stats:
             # Draw label in dim color
             screen.brush = brushes.color(*DIM)
@@ -378,9 +380,12 @@ def draw_stats_view():
                 break
     
     # Draw scroll indicator if needed
-    if font and len(stats) > 8:
+    if font and len(stats) > ITEMS_PER_PAGE:
+        # Show page number instead of item index for clarity
+        total_pages = (len(stats) + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE
+        current_page = (stats_scroll // ITEMS_PER_PAGE) + 1
         screen.brush = brushes.color(*DIM)
-        screen.text(f"{stats_scroll + 1}/{len(stats)}", 120, 98)
+        screen.text(f"{current_page}/{total_pages}", 120, 98)
     
     # Draw instructions
     if font:
