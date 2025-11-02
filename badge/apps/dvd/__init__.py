@@ -67,8 +67,9 @@ def _handle_intro_input() -> None:
 
 def _update_and_draw_playing() -> None:
     """Advance the logo animation and draw it."""
-    logo.update()
-    logo.draw()
+    if logo:
+        logo.update()
+        logo.draw()
 
 def _draw_playing_hint() -> None:
     """Blink a hint to return to intro."""

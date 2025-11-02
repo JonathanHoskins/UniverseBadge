@@ -61,7 +61,7 @@ def update() -> bool | None:
         return False
     frame, alpha = result
 
-    show_frame(frame, alpha)
+    show_frame(frame, int(alpha))  # type: ignore[arg-type]
     return None
 
 
@@ -97,7 +97,7 @@ def _compute_frame_and_alpha(time: float) -> tuple[int, float] | bool:
         time_since_pressed = time - button_pressed_at
         if time_since_pressed < fade_duration:
             frame = round((time_since_pressed / fade_duration) * (frame_count - hold_frame)) + hold_frame
-            alpha = 255 - ((time_since_pressed / fade_duration) * 255)
+            alpha = int(255 - ((time_since_pressed / fade_duration) * 255))  # type: ignore[assignment]
             return (frame, alpha)
         else:
             _clear_and_exit()

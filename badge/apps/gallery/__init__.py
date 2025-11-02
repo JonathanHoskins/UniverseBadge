@@ -141,9 +141,9 @@ def _smooth_scroll_thumbnails() -> None:
     """Ease the thumbnail_scroll value toward the current index."""
     global thumbnail_scroll
     if thumbnail_scroll < index:
-        thumbnail_scroll = min(thumbnail_scroll + 0.1, index)
+        thumbnail_scroll = min(thumbnail_scroll + 0.1, float(index))  # type: ignore[assignment]
     if thumbnail_scroll > index:
-        thumbnail_scroll = max(thumbnail_scroll - 0.1, index)
+        thumbnail_scroll = max(thumbnail_scroll - 0.1, float(index))  # type: ignore[assignment]
 
 def _draw_title_overlay() -> None:
     """Draw a translucent bar and centered title text when UI is visible."""

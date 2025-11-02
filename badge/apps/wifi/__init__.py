@@ -150,7 +150,7 @@ def _handle_wifi_connect() -> None:
             try:
                 import sys
                 sys.path.insert(0, "/")
-                from secrets import WIFI_SSID, WIFI_PASSWORD
+                from secrets import WIFI_SSID, WIFI_PASSWORD  # type: ignore[attr-defined]
                 sys.path.pop(0)
                 add_status(f"SSID: {WIFI_SSID[:15]}")
             except Exception as e:

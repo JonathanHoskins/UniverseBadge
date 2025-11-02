@@ -113,7 +113,7 @@ def draw_button(x: int, y: int, label: str, active: bool) -> None:
 
     # draw the button label
     screen.brush = brushes.color(255, 255, 255, 255 if active else 150)
-    shadow_text(label, y + (bounce / 2), x, x + width)
+    shadow_text(label, int(y + (bounce / 2)), x, x + width)  # type: ignore[arg-type]
 
     # draw the button arrow
     arrows.sprite(2, 0).alpha = 255 if active else 150
