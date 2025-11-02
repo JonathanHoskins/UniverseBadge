@@ -12,7 +12,6 @@ wifi_enabled = False
 wlan = None
 connect_attempted = False
 last_update = 0
-roku_scan_active = False
 view_mode = "status"  # "status" or "stats"
 stats_scroll = 0
 max_stats_scroll = 0
@@ -29,42 +28,47 @@ ITEMS_PER_PAGE = 4  # number of stats entries visible per screen
 
 
 def get_network_stats():
-    """Gather detailed network statistics for display."""
+    """Gather detailed network statistics for display.
+    Returns list of tuples: (label, value, color_override)
+    color_override is optional - if present, use that color for the value.
+    """
     if not wlan or not wlan.isconnected():
         return []
     
     stats = []
     try:
         config = wlan.ifconfig()
-        stats.append(("IP Address", config[0]))
-        stats.append(("Subnet Mask", config[1]))
-        stats.append(("Gateway", config[2]))
-        stats.append(("DNS Server", config[3]))
+        stats.append(("IP Address", config[0], None))
+        stats.append(("Subnet Mask", config[1], None))
+        stats.append(("Gateway", config[2], None))
+        stats.append(("DNS Server", config[3], None))
     except Exception:
         pass
     
     try:
         mac = wlan.config("mac")
         mac_str = ":".join([f"{b:02x}" for b in mac])
-        stats.append(("MAC Address", mac_str))
+        stats.append(("MAC Address", mac_str, None))
     except Exception:
         pass
     
     try:
         rssi = wlan.status("rssi")
-        stats.append(("Signal (RSSI)", f"{rssi} dBm"))
+        # Color code: red if signal is weak (below -70 dBm)
+        signal_color = ERROR if rssi < -70 else None
+        stats.append(("Signal (RSSI)", f"{rssi} dBm", signal_color))
     except Exception:
         pass
     
     try:
         ssid = wlan.config("ssid")
-        stats.append(("SSID", ssid[:20]))
+        stats.append(("SSID", ssid[:20], None))
     except Exception:
         pass
     
     try:
         channel = wlan.config("channel")
-        stats.append(("Channel", str(channel)))
+        stats.append(("Channel", str(channel), None))
     except Exception:
         pass
     
@@ -72,7 +76,7 @@ def get_network_stats():
         uptime = (io.ticks - connection_start_time) // 1000
         mins = uptime // 60
         secs = uptime % 60
-        stats.append(("Uptime", f"{mins}m {secs}s"))
+        stats.append(("Uptime", f"{mins}m {secs}s", None))
     
     return stats
 
@@ -85,102 +89,8 @@ def add_status(text):
         status_lines = status_lines[-8:]
 
 
-def scan_for_roku():
-    """Try to find Roku device using SSDP discovery."""
-    add_status("Scanning for Roku...")
-    try:
-        import socket
-        
-        # SSDP multicast discovery
-        SSDP_ADDR = "239.255.255.250"
-        SSDP_PORT = 1900
-        SSDP_MX = 2
-        SSDP_ST = "roku:ecp"
-        
-        ssdp_request = (
-            "M-SEARCH * HTTP/1.1\r\n"
-            f"HOST: {SSDP_ADDR}:{SSDP_PORT}\r\n"
-            "MAN: \"ssdp:discover\"\r\n"
-            f"MX: {SSDP_MX}\r\n"
-            f"ST: {SSDP_ST}\r\n"
-            "\r\n"
-        )
-        
-        # Create UDP socket
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.settimeout(3)
-        
-        # Send discovery request
-        sock.sendto(ssdp_request.encode(), (SSDP_ADDR, SSDP_PORT))
-        add_status("SSDP request sent")
-        
-        # Listen for responses
-        found_roku = False
-        try:
-            while True:
-                data, addr = sock.recvfrom(1024)
-                response = data.decode()
-                if "roku" in response.lower():
-                    add_status(f"Found Roku at {addr[0]}")
-                    found_roku = True
-                    break
-        except Exception:
-            pass  # Timeout or no more responses
-        
-        sock.close()
-        
-        if not found_roku:
-            add_status("No Roku found")
-            # Try common ECP port test
-            add_status("Trying ECP test...")
-            test_roku_ecp()
-            
-    except Exception as e:
-        add_status(f"Scan error: {str(e)[:20]}")
-
-
-def test_roku_ecp():
-    """Test if a Roku is reachable on common local IPs."""
-    try:
-        import socket
-        # Get our IP to determine subnet
-        if wlan and wlan.isconnected():
-            my_ip = wlan.ifconfig()[0]
-            subnet = ".".join(my_ip.split(".")[:3])
-            test_ips = [f"{subnet}.{i}" for i in [2, 10, 20, 30, 34, 50, 100]]
-            for ip in test_ips:
-                try:
-                    sock = socket.socket()
-                    sock.settimeout(0.7)
-                    sock.connect((ip, 8060))
-                    # Send GET request
-                    sock.send(b"GET / HTTP/1.1\r\nHost: " + ip.encode() + b"\r\n\r\n")
-                    data = b""
-                    try:
-                        while True:
-                            chunk = sock.recv(256)
-                            if not chunk:
-                                break
-                            data += chunk
-                            if len(data) > 2048:
-                                break
-                    except Exception:
-                        pass
-                    sock.close()
-                    # Check for Roku-specific headers or XML
-                    text = data.decode(errors="ignore")
-                    if ("Server: Roku/" in text or "Application-URL:" in text or "<deviceType>roku:ecp</deviceType>" in text):
-                        add_status(f"Roku confirmed at {ip}:8060!")
-                        return
-                except Exception:
-                    pass
-            add_status("No Roku on subnet")
-    except Exception as e:
-        add_status(f"ECP test err: {str(e)[:15]}")
-
-
 def update():
-    global font, wifi_enabled, wlan, connect_attempted, last_update, roku_scan_active
+    global font, wifi_enabled, wlan, connect_attempted, last_update
     global view_mode, stats_scroll, connection_start_time
     
     screen.brush = brushes.color(*BG)
@@ -229,15 +139,6 @@ def update():
             connect_attempted = False
             connection_start_time = 0
             view_mode = "status"
-    
-    # Handle Roku scan with B button
-    if io.BUTTON_B in io.pressed and not roku_scan_active:
-        if wlan and wlan.isconnected():
-            roku_scan_active = True
-            scan_for_roku()
-            roku_scan_active = False
-        else:
-            add_status("Connect WiFi first!")
     
     # Try to connect if enabled and not yet attempted
     if wifi_enabled and not connect_attempted:
@@ -330,9 +231,9 @@ def draw_status_view():
     if font:
         screen.brush = brushes.color(*WARNING)
         if wlan and wlan.isconnected():
-            screen.text("A:WiFi C:Stats B:Roku", 5, 108)
+            screen.text("A:WiFi C:Stats", 5, 108)
         else:
-            screen.text("A:WiFi  B:Find Roku", 5, 108)
+            screen.text("A:Toggle WiFi", 5, 108)
     
     # Heartbeat indicator
     try:
@@ -359,20 +260,26 @@ def draw_stats_view():
     
     # Get stats
     stats = get_network_stats()
-    # Compute max scroll based on how many items fit on one page
+    # Compute max scroll - allow scrolling one item at a time
     max_stats_scroll = max(0, len(stats) - ITEMS_PER_PAGE)
     
-    # Draw stats (scrollable)
+    # Draw stats (scrollable by item, not by page)
     if font and stats:
         y = 20
         visible_stats = stats[stats_scroll:stats_scroll + ITEMS_PER_PAGE]
-        for label, value in visible_stats:
+        for item in visible_stats:
+            # Unpack with optional color override
+            label, value, color_override = item
+            
             # Draw label in dim color
             screen.brush = brushes.color(*DIM)
             screen.text(f"{label}:", 5, y)
             
-            # Draw value
-            screen.brush = brushes.color(*TEXT)
+            # Draw value with optional color override
+            if color_override:
+                screen.brush = brushes.color(*color_override)
+            else:
+                screen.brush = brushes.color(*TEXT)
             screen.text(str(value)[:20], 5, y + 10)
             
             y += 20
@@ -381,11 +288,11 @@ def draw_stats_view():
     
     # Draw scroll indicator if needed
     if font and len(stats) > ITEMS_PER_PAGE:
-        # Show page number instead of item index for clarity
+        # Show page number: which page we're viewing
+        current_page = ((stats_scroll + ITEMS_PER_PAGE) // ITEMS_PER_PAGE)
         total_pages = (len(stats) + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE
-        current_page = (stats_scroll // ITEMS_PER_PAGE) + 1
         screen.brush = brushes.color(*DIM)
-        screen.text(f"{current_page}/{total_pages}", 120, 98)
+        screen.text(f"Page {current_page}/{total_pages}", 95, 98)
     
     # Draw instructions
     if font:
