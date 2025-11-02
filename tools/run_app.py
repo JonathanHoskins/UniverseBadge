@@ -1,16 +1,17 @@
 """
-Desktop runner for badge apps using the test stubs.
+Desktop runner for badge apps using the test stubs, with a simple visual screen.
 
 - Uses tests/_stubs/badgeware to emulate the badgeware API
+- Provides a Tkinter window to visualize drawing (text and simple shapes)
 - Calls app.update() in a loop
 - Maps keyboard keys to io.BUTTON_* (A/B/C and arrows)
 - Prints key UI state each second (status text, errors, connectivity)
 
-Windows-only interactive keys use msvcrt.getch(). Press ESC to quit.
+Press ESC in the console to quit (or close the window).
 
 Usage:
-  python tools/run_app.py badge.apps.hc911
-  python tools/run_app.py badge.apps.wifi
+    python tools/run_app.py badge.apps.hc911
+    python tools/run_app.py badge.apps.wifi
 """
 from __future__ import annotations
 
@@ -28,8 +29,9 @@ if str(STUBS) not in sys.path:
 if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
 
-# Now we can import the stubbed badgeware
-from badgeware import io  # type: ignore
+# Now we can import the stubbed badgeware (module object)
+import badgeware as bw  # type: ignore
+io = bw.io  # shorthand
 
 # Default app
 APP_MODULE = sys.argv[1] if len(sys.argv) > 1 else "badge.apps.hc911"
@@ -40,6 +42,106 @@ def _load_app(modname: str) -> ModuleType:
     if not hasattr(mod, "update"):
         raise RuntimeError(f"Module {modname} has no update()")
     return mod
+
+
+# ---------------- Visual screen (Tkinter) -----------------
+
+SCALE = 3  # scale drawing for visibility
+WIDTH, HEIGHT = 160, 120
+
+
+def _to_hex(color):
+    # Accept (r,g,b[,a]) tuple from brushes.color
+    if not isinstance(color, (tuple, list)):
+        return "#ffffff"
+    r, g, b = int(color[0]), int(color[1]), int(color[2])
+    return f"#{r:02x}{g:02x}{b:02x}"
+
+
+try:
+    import tkinter as tk  # type: ignore
+except Exception:  # pragma: no cover - optional
+    tk = None
+
+
+class _VisualShape:
+    def __init__(self, kind: str, *args):
+        self.kind = kind
+        self.args = args
+
+
+class VisualShapes:
+    def circle(self, x: int, y: int, r: int):
+        return _VisualShape("circle", x, y, r)
+
+    def rectangle(self, x: int, y: int, w: int, h: int):
+        return _VisualShape("rectangle", x, y, w, h)
+
+
+class VisualScreen:
+    def __init__(self, canvas, x=0, y=0, w=WIDTH, h=HEIGHT, scale=SCALE):
+        self.width = w
+        self.height = h
+        self._canvas = canvas
+        self._origin_x = x
+        self._origin_y = y
+        self._scale = scale
+        self.brush = bw.brushes.color(255, 255, 255)
+        self.font = None
+
+    def _sx(self, x):
+        return (self._origin_x + x) * self._scale
+
+    def _sy(self, y):
+        return (self._origin_y + y) * self._scale
+
+    def draw(self, shape: _VisualShape):
+        if tk is None or not isinstance(shape, _VisualShape):
+            return None
+        color = _to_hex(self.brush)
+        if shape.kind == "circle":
+            x, y, r = shape.args
+            x0, y0 = self._sx(x - r), self._sy(y - r)
+            x1, y1 = self._sx(x + r), self._sy(y + r)
+            self._canvas.create_oval(x0, y0, x1, y1, outline=color, fill=color)
+        elif shape.kind == "rectangle":
+            x, y, w, h = shape.args
+            self._canvas.create_rectangle(self._sx(x), self._sy(y), self._sx(x + w), self._sy(y + h), outline=color, fill=color)
+        return None
+
+    def clear(self):
+        if tk is None:
+            return None
+        # fill with current brush color
+        self._canvas.delete("all")
+        self._canvas.create_rectangle(0, 0, self._sx(self.width), self._sy(self.height), outline=_to_hex(self.brush), fill=_to_hex(self.brush))
+        return None
+
+    def text(self, text: str, x: int, y: int):
+        if tk is None:
+            return None
+        self._canvas.create_text(self._sx(x), self._sy(y), anchor="nw", text=str(text), fill=_to_hex(self.brush), font=("TkFixedFont", 8 * self._scale // 2))
+        return None
+
+    def measure_text(self, text: str):
+        # simple fixed-size metrics (unscaled units)
+        return (max(0, len(text)) * 6, 10)
+
+    def blit(self, _img, x: int, y: int):
+        # draw a placeholder rectangle for images
+        self._canvas.create_rectangle(self._sx(x), self._sy(y), self._sx(x + 16), self._sy(y + 16), outline=_to_hex(self.brush))
+        return None
+
+    def scale_blit(self, _img, x: int, y: int, w: int, h: int):
+        self._canvas.create_rectangle(self._sx(x), self._sy(y), self._sx(x + w), self._sy(y + h), outline=_to_hex(self.brush))
+        return None
+
+    def window(self, x, y, w, h):
+        # Return a view into the same canvas with offset
+        return VisualScreen(self._canvas, self._origin_x + x, self._origin_y + y, w, h, self._scale)
+
+    def load_into(self, _filename: str):
+        return None
 
 
 def _windows_key_input():
@@ -89,6 +191,20 @@ def _print_state(mod: ModuleType):
 
 
 def main():
+    # Set up Tk window if available
+    root = None
+    canvas = None
+    if tk is not None:
+        root = tk.Tk()
+        root.title(f"UniverseBadge Emulator - {APP_MODULE}")
+        canvas = tk.Canvas(root, width=WIDTH * SCALE, height=HEIGHT * SCALE, bg="#0d1117")
+        canvas.pack()
+
+    # Patch badgeware screen & shapes with visual versions if we have a canvas
+    if canvas is not None:
+        bw.screen = VisualScreen(canvas)
+        bw.shapes = VisualShapes()
+
     mod = _load_app(APP_MODULE)
 
     print(f"Running {APP_MODULE}. Press ESC to quit. Keys: A/B/C, arrows.")
@@ -104,6 +220,11 @@ def main():
 
             # Run one update frame
             mod.update()
+
+            # Update the window
+            if root is not None:
+                root.update_idletasks()
+                root.update()
 
             # Print state once per second
             now = time.time()
