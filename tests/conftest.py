@@ -75,27 +75,34 @@ def _preload_sibling_modules(app_name: str):
     for spec, mod in modules_to_exec:
         try:
             if spec.loader:
-                spec.loader.exec_module(mod)
+                spec.loader.exec_module(mod)  # type: ignore[attr-defined]
         except Exception as ex:
-            print(f"Warning: Failed to execute {spec.name}: {ex}")
+            print(f"Warning: Failed to execute module {spec.name}: {ex}")
+            # If a sibling fails to import it's fine; the top-level import may not need it
 
 
-def _import_app(app_name: str):
+def pytest_sessionstart(session):  # noqa: D401
+    """Session start hook to install stubs before any tests import the apps."""
+    _install_badgeware_stub()
+    _install_os_chdir_noop()
+
+
+def prepare_app_import(app_name: str):
+    """Utility for tests to ready the environment before importing an app."""
     _install_badgeware_stub()
     _install_os_chdir_noop()
     _preload_sibling_modules(app_name)
-    # Now import the app's __init__.py
-    app_module = importlib.import_module(f"badge.apps.{app_name}")
-    return app_module
-
-
-import pytest
-
-
-@pytest.fixture
-def import_app():
-    """
-    Fixture to import an app module with all necessary stubs and preloads.
-    Usage: app = import_app('flappy')
-    """
-    return _import_app
+    # Provide minimal UI shims for apps that expect a local 'ui' module (e.g., menu)
+    if app_name == "menu":
+        ui = sys.modules.get("ui")
+        if ui is None:
+            ui = ModuleType("ui")
+            sys.modules["ui"] = ui
+        if not hasattr(ui, "draw_background"):
+            def _bg():
+                return None
+            ui.draw_background = _bg  # type: ignore[attr-defined]
+        if not hasattr(ui, "draw_header"):
+            def _hdr():
+                return None
+            ui.draw_header = _hdr  # type: ignore[attr-defined]
