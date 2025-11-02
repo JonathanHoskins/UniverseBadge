@@ -41,6 +41,21 @@ import socket  # type: ignore
 sys.modules['network'] = network
 sys.modules['socket'] = socket
 
+# Import secrets and make it available for apps that import from root
+# Apps try to do: sys.path.insert(0, "/"); from secrets import ...
+try:
+    from badge import secrets  # type: ignore
+    sys.modules['secrets'] = secrets
+    print(f"Loaded WiFi credentials: SSID='{secrets.WIFI_SSID}'")
+except Exception as e:
+    print(f"Warning: Could not load secrets: {e}")
+    # Create a minimal secrets stub
+    class _Secrets:
+        WIFI_SSID = "test_network"
+        WIFI_PASSWORD = "test_password"
+        GITHUB_USERNAME = "test_user"
+    sys.modules['secrets'] = _Secrets
+
 # Default app
 APP_MODULE = sys.argv[1] if len(sys.argv) > 1 else "badge.apps.hc911"
 

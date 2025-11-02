@@ -38,11 +38,27 @@ import socket  # type: ignore
 sys.modules['network'] = network
 sys.modules['socket'] = socket
 
+# Import secrets and make it available for apps that import from root
+# Apps try to do: sys.path.insert(0, "/"); from secrets import ...
+try:
+    from badge import secrets  # type: ignore
+    sys.modules['secrets'] = secrets
+    print(f"Loaded WiFi credentials: SSID='{secrets.WIFI_SSID}'")
+except Exception as e:
+    print(f"Warning: Could not load secrets: {e}")
+    # Create a minimal secrets stub
+    class _Secrets:
+        WIFI_SSID = "test_network"
+        WIFI_PASSWORD = "test_password"
+        GITHUB_USERNAME = "test_user"
+    sys.modules['secrets'] = _Secrets
+
 # Display constants
 SCALE = 4  # scale drawing for better visibility
 WIDTH, HEIGHT = 160, 120
 pressed_queue: set[int] = set()
 held_keys: set[int] = set()
+escape_pressed = False  # ESC key to return to menu
 
 # Available apps (mimics menu structure)
 # Note: Many apps require /system/ filesystem paths that only exist on hardware
@@ -214,6 +230,7 @@ def _draw_menu():
 
 def _tk_bind_keys(root):
     """Bind keyboard keys to button inputs."""
+    global escape_pressed
     if tk is None:
         return
 
@@ -225,6 +242,10 @@ def _tk_bind_keys(root):
 
     def _release(btn):
         held_keys.discard(btn)
+    
+    def _esc(e):
+        global escape_pressed
+        escape_pressed = True
 
     # Key bindings for A/B/C (press only)
     root.bind("<KeyPress-a>", lambda e: _press(io.BUTTON_A))
@@ -244,8 +265,8 @@ def _tk_bind_keys(root):
     root.bind("<KeyPress-Right>", lambda e: _hold(getattr(io, 'BUTTON_RIGHT', io.BUTTON_DOWN)))
     root.bind("<KeyRelease-Right>", lambda e: _release(getattr(io, 'BUTTON_RIGHT', io.BUTTON_DOWN)))
 
-    # Escape to return to menu
-    root.bind("<Escape>", lambda e: _press(io.BUTTON_B))
+    # Escape to return to menu (not tied to B button)
+    root.bind("<Escape>", _esc)
 
 
 def _tk_controls(root):
@@ -293,7 +314,7 @@ def _tk_controls(root):
 
 
 def main():
-    global current_app_index, current_app_module, in_menu
+    global current_app_index, current_app_module, in_menu, escape_pressed
 
     # Set up Tk window
     root = None
@@ -317,7 +338,7 @@ def main():
         bw.shapes = VisualShapes()
 
     print("UniverseBadge Desktop Emulator")
-    print("Press ESC or B to return to menu from any app")
+    print("Press ESC to return to menu from any app")
     print("Close window or Ctrl+C to quit")
 
     last_print = 0.0
@@ -369,7 +390,7 @@ def main():
                     if current_app_module:
                         in_menu = False
                         if info_label:
-                            info_label.config(text=f"App: {app_title} (B:Menu)")
+                            info_label.config(text=f"App: {app_title} (ESC:Menu)")
                         print(f"Launched: {app_title}")
                     else:
                         print(f"Failed to load: {app_title}")
@@ -378,8 +399,9 @@ def main():
                 _draw_menu()
             else:
                 # Run current app
-                if io.BUTTON_B in io.pressed:
-                    # Return to menu
+                if escape_pressed:
+                    # Return to menu (ESC key pressed)
+                    escape_pressed = False
                     in_menu = True
                     current_app_module = None
                     if info_label:
