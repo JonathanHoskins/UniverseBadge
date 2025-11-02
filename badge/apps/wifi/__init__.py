@@ -1,6 +1,6 @@
 """
 WiFi Connection Test App
-Shows WiFi status and connection information
+Shows WiFi status and connection information with scrollable network stats
 """
 
 from badgeware import screen, PixelFont, shapes, brushes, io
@@ -13,6 +13,10 @@ wlan = None
 connect_attempted = False
 last_update = 0
 roku_scan_active = False
+view_mode = "status"  # "status" or "stats"
+stats_scroll = 0
+max_stats_scroll = 0
+connection_start_time = 0
 
 # Colors
 BG = (13, 17, 23)
@@ -20,6 +24,57 @@ TEXT = (201, 209, 217)
 SUCCESS = (46, 160, 67)
 ERROR = (248, 81, 73)
 WARNING = (255, 191, 0)
+DIM = (88, 96, 105)
+ITEMS_PER_PAGE = 4  # number of stats entries visible per screen
+
+
+def get_network_stats():
+    """Gather detailed network statistics for display."""
+    if not wlan or not wlan.isconnected():
+        return []
+    
+    stats = []
+    try:
+        config = wlan.ifconfig()
+        stats.append(("IP Address", config[0]))
+        stats.append(("Subnet Mask", config[1]))
+        stats.append(("Gateway", config[2]))
+        stats.append(("DNS Server", config[3]))
+    except Exception:
+        pass
+    
+    try:
+        mac = wlan.config("mac")
+        mac_str = ":".join([f"{b:02x}" for b in mac])
+        stats.append(("MAC Address", mac_str))
+    except Exception:
+        pass
+    
+    try:
+        rssi = wlan.status("rssi")
+        stats.append(("Signal (RSSI)", f"{rssi} dBm"))
+    except Exception:
+        pass
+    
+    try:
+        ssid = wlan.config("ssid")
+        stats.append(("SSID", ssid[:20]))
+    except Exception:
+        pass
+    
+    try:
+        channel = wlan.config("channel")
+        stats.append(("Channel", str(channel)))
+    except Exception:
+        pass
+    
+    if connection_start_time > 0:
+        uptime = (io.ticks - connection_start_time) // 1000
+        mins = uptime // 60
+        secs = uptime % 60
+        stats.append(("Uptime", f"{mins}m {secs}s"))
+    
+    return stats
 
 
 def add_status(text):
@@ -126,6 +181,7 @@ def test_roku_ecp():
 
 def update():
     global font, wifi_enabled, wlan, connect_attempted, last_update, roku_scan_active
+    global view_mode, stats_scroll, connection_start_time
     
     screen.brush = brushes.color(*BG)
     screen.clear()
@@ -140,6 +196,21 @@ def update():
     
     if font:
         screen.font = font
+    
+    # Handle view mode toggle with C button
+    if io.BUTTON_C in io.pressed:
+        if wlan and wlan.isconnected():
+            view_mode = "stats" if view_mode == "status" else "status"
+            stats_scroll = 0
+        else:
+            add_status("Connect WiFi first!")
+    
+    # Handle scrolling in stats view
+    if view_mode == "stats":
+        if io.BUTTON_UP in io.pressed:
+            stats_scroll = max(0, stats_scroll - 1)
+        if io.BUTTON_DOWN in io.pressed:
+            stats_scroll = min(max_stats_scroll, stats_scroll + 1)
     
     # Handle WiFi toggle with A button
     if io.BUTTON_A in io.pressed:
@@ -156,6 +227,8 @@ def update():
                     pass
             wlan = None
             connect_attempted = False
+            connection_start_time = 0
+            view_mode = "status"
     
     # Handle Roku scan with B button
     if io.BUTTON_B in io.pressed and not roku_scan_active:
@@ -208,14 +281,30 @@ def update():
             last_update = io.ticks
             try:
                 if wlan.isconnected():
+                    if connection_start_time == 0:
+                        connection_start_time = io.ticks
+                        add_status("Connected!")
                     config = wlan.ifconfig()
-                    add_status("Connected!")
-                    add_status(f"IP: {config[0]}")
+                    if view_mode == "status":
+                        add_status(f"IP: {config[0]}")
                 else:
+                    connection_start_time = 0
                     status = wlan.status()
                     add_status(f"Status: {status}")
             except Exception as e:
                 add_status(f"Check error: {str(e)[:20]}")
+    
+    # Draw based on view mode
+    if view_mode == "stats":
+        draw_stats_view()
+    else:
+        draw_status_view()
+
+    return None
+
+
+def draw_status_view():
+    """Draw the status log view."""
     
     # Draw header
     if font:
@@ -240,7 +329,10 @@ def update():
     # Draw instructions
     if font:
         screen.brush = brushes.color(*WARNING)
-        screen.text("A:WiFi  B:Find Roku", 5, 108)
+        if wlan and wlan.isconnected():
+            screen.text("A:WiFi C:Stats B:Roku", 5, 108)
+        else:
+            screen.text("A:WiFi  B:Find Roku", 5, 108)
     
     # Heartbeat indicator
     try:
@@ -249,5 +341,61 @@ def update():
         screen.draw(shapes.circle(4, 4, 2))
     except Exception:
         pass
+
+
+def draw_stats_view():
+    """Draw the network statistics view with scrolling."""
+    global max_stats_scroll
     
-    return None
+    # Draw header
+    if font:
+        screen.brush = brushes.color(*TEXT)
+        screen.text("Network Stats", 5, 3)
+        
+        # Draw WiFi status indicator
+        color = SUCCESS if wifi_enabled else ERROR
+        screen.brush = brushes.color(*color)
+        screen.text("ON", 135, 3)
+    
+    # Get stats
+    stats = get_network_stats()
+    # Compute max scroll based on how many items fit on one page
+    max_stats_scroll = max(0, len(stats) - ITEMS_PER_PAGE)
+    
+    # Draw stats (scrollable)
+    if font and stats:
+        y = 20
+        visible_stats = stats[stats_scroll:stats_scroll + ITEMS_PER_PAGE]
+        for label, value in visible_stats:
+            # Draw label in dim color
+            screen.brush = brushes.color(*DIM)
+            screen.text(f"{label}:", 5, y)
+            
+            # Draw value
+            screen.brush = brushes.color(*TEXT)
+            screen.text(str(value)[:20], 5, y + 10)
+            
+            y += 20
+            if y >= 100:
+                break
+    
+    # Draw scroll indicator if needed
+    if font and len(stats) > ITEMS_PER_PAGE:
+        # Show page number instead of item index for clarity
+        total_pages = (len(stats) + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE
+        current_page = (stats_scroll // ITEMS_PER_PAGE) + 1
+        screen.brush = brushes.color(*DIM)
+        screen.text(f"{current_page}/{total_pages}", 120, 98)
+    
+    # Draw instructions
+    if font:
+        screen.brush = brushes.color(*WARNING)
+        screen.text("C:Back UP/DOWN:Scroll", 5, 108)
+    
+    # Heartbeat indicator
+    try:
+        color = SUCCESS if (io.ticks // 250) % 2 == 0 else BG
+        screen.brush = brushes.color(*color)
+        screen.draw(shapes.circle(4, 4, 2))
+    except Exception:
+        pass
