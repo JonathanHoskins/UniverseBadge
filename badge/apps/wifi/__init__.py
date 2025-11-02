@@ -29,42 +29,47 @@ ITEMS_PER_PAGE = 4  # number of stats entries visible per screen
 
 
 def get_network_stats():
-    """Gather detailed network statistics for display."""
+    """Gather detailed network statistics for display.
+    Returns list of tuples: (label, value, color_override)
+    color_override is optional - if present, use that color for the value.
+    """
     if not wlan or not wlan.isconnected():
         return []
     
     stats = []
     try:
         config = wlan.ifconfig()
-        stats.append(("IP Address", config[0]))
-        stats.append(("Subnet Mask", config[1]))
-        stats.append(("Gateway", config[2]))
-        stats.append(("DNS Server", config[3]))
+        stats.append(("IP Address", config[0], None))
+        stats.append(("Subnet Mask", config[1], None))
+        stats.append(("Gateway", config[2], None))
+        stats.append(("DNS Server", config[3], None))
     except Exception:
         pass
     
     try:
         mac = wlan.config("mac")
         mac_str = ":".join([f"{b:02x}" for b in mac])
-        stats.append(("MAC Address", mac_str))
+        stats.append(("MAC Address", mac_str, None))
     except Exception:
         pass
     
     try:
         rssi = wlan.status("rssi")
-        stats.append(("Signal (RSSI)", f"{rssi} dBm"))
+        # Color code: red if signal is weak (below -70 dBm)
+        signal_color = ERROR if rssi < -70 else None
+        stats.append(("Signal (RSSI)", f"{rssi} dBm", signal_color))
     except Exception:
         pass
     
     try:
         ssid = wlan.config("ssid")
-        stats.append(("SSID", ssid[:20]))
+        stats.append(("SSID", ssid[:20], None))
     except Exception:
         pass
     
     try:
         channel = wlan.config("channel")
-        stats.append(("Channel", str(channel)))
+        stats.append(("Channel", str(channel), None))
     except Exception:
         pass
     
@@ -72,7 +77,7 @@ def get_network_stats():
         uptime = (io.ticks - connection_start_time) // 1000
         mins = uptime // 60
         secs = uptime % 60
-        stats.append(("Uptime", f"{mins}m {secs}s"))
+        stats.append(("Uptime", f"{mins}m {secs}s", None))
     
     return stats
 
@@ -359,20 +364,30 @@ def draw_stats_view():
     
     # Get stats
     stats = get_network_stats()
-    # Compute max scroll based on how many items fit on one page
+    # Compute max scroll - allow scrolling one item at a time
     max_stats_scroll = max(0, len(stats) - ITEMS_PER_PAGE)
     
-    # Draw stats (scrollable)
+    # Draw stats (scrollable by item, not by page)
     if font and stats:
         y = 20
         visible_stats = stats[stats_scroll:stats_scroll + ITEMS_PER_PAGE]
-        for label, value in visible_stats:
+        for item in visible_stats:
+            # Unpack with optional color override
+            if len(item) == 3:
+                label, value, color_override = item
+            else:
+                label, value = item
+                color_override = None
+            
             # Draw label in dim color
             screen.brush = brushes.color(*DIM)
             screen.text(f"{label}:", 5, y)
             
-            # Draw value
-            screen.brush = brushes.color(*TEXT)
+            # Draw value with optional color override
+            if color_override:
+                screen.brush = brushes.color(*color_override)
+            else:
+                screen.brush = brushes.color(*TEXT)
             screen.text(str(value)[:20], 5, y + 10)
             
             y += 20
@@ -381,11 +396,9 @@ def draw_stats_view():
     
     # Draw scroll indicator if needed
     if font and len(stats) > ITEMS_PER_PAGE:
-        # Show page number instead of item index for clarity
-        total_pages = (len(stats) + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE
-        current_page = (stats_scroll // ITEMS_PER_PAGE) + 1
+        # Show current position: "item X of Y"
         screen.brush = brushes.color(*DIM)
-        screen.text(f"{current_page}/{total_pages}", 120, 98)
+        screen.text(f"{stats_scroll + 1}/{len(stats)}", 110, 98)
     
     # Draw instructions
     if font:
