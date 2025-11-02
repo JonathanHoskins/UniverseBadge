@@ -61,6 +61,8 @@ def intro():
         Obstacle.obstacles.clear()
         Obstacle.next_spawn_time = io.ticks + 500
         mona = None
+        global background_offset
+        background_offset = 0
         gc.collect()  # Free memory before creating new Mona
         mona = Mona()
 
@@ -92,6 +94,8 @@ def game_over():
         # Clear all obstacles and Mona instance before returning to intro
         Obstacle.obstacles.clear()
         mona = None
+        global background_offset
+        background_offset = 0
         gc.collect()
         state = GameState.INTRO
 
