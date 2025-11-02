@@ -1,4 +1,13 @@
+"""UI helpers for the Monapet app.
+
+Provides drawing utilities for background, title/header, buttons and status bars.
+These functions only render to the global `screen` and don't mutate external state.
+"""
+
+from __future__ import annotations
+
 import math
+
 from badgeware import screen, brushes, SpriteSheet, shapes, PixelFont, io
 
 # load user interface sprites
@@ -27,8 +36,8 @@ stats_icons = {
 outline_brush = brushes.color(20, 30, 40, 150)
 outline_brush_bold = brushes.color(20, 30, 40, 200)
 
-# draw the background scenery
-def background(mona):
+def background(mona) -> None:
+    """Draw the room background relative to Mona's position."""
     floor_y, mona_x = mona.position()[1] - 5, mona.position()[0]
 
     # fill the wall background
@@ -86,7 +95,7 @@ def background(mona):
 # draw the title banner
 
 
-def draw_header():
+def draw_header() -> None:
     screen.brush = outline_brush
     screen.draw(shapes.rounded_rectangle(40, -5, 160 - 80, 18, 3))
 
@@ -96,7 +105,7 @@ def draw_header():
 # draw a user action button with button name and label
 
 
-def draw_button(x, y, label, active):
+def draw_button(x: int, y: int, label: str, active: bool) -> None:
     width = 50
 
     # create an animated bounce effect
@@ -104,7 +113,7 @@ def draw_button(x, y, label, active):
 
     # draw the button label
     screen.brush = brushes.color(255, 255, 255, 255 if active else 150)
-    shadow_text(label, y + (bounce / 2), x, x + width)
+    shadow_text(label, int(y + (bounce / 2)), x, x + width)  # type: ignore[arg-type]
 
     # draw the button arrow
     arrows.sprite(2, 0).alpha = 255 if active else 150
@@ -112,7 +121,7 @@ def draw_button(x, y, label, active):
 
 
 # draw a statistics bar with icon and fill level
-def draw_bar(name, x, y, amount):
+def draw_bar(name: str, x: int, y: int, amount: int) -> None:
     bar_width = 50
 
     screen.brush = outline_brush
@@ -139,12 +148,12 @@ def draw_bar(name, x, y, amount):
     screen.blit(stats_icons[name], x, y)
 
 
-def center_text(text, y, sx=0, ex=160):
+def center_text(text: str, y: int, sx: int = 0, ex: int = 160) -> None:
     w, _ = screen.measure_text(text)
     screen.text(text, sx + ((ex - sx) / 2) - (w / 2), y)
 
 
-def shadow_text(text, y, sx=0, ex=160):
+def shadow_text(text: str, y: int, sx: int = 0, ex: int = 160) -> None:
     temp = screen.brush
     screen.brush = brushes.color(0, 0, 0, 100)
     center_text(text, y + 1, sx + 1, ex + 1)

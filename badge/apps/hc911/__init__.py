@@ -5,6 +5,8 @@ Displays current incident count from hamiltontn911.gov
 
 from badgeware import screen, PixelFont, shapes, brushes, io
 
+GITHUB_DARK_BG = (13, 17, 23)
+
 # UI state
 font = None
 status_text = "Press A to fetch"
@@ -24,7 +26,7 @@ cached_error_msg = None
 wifi_connect_start = 0
 
 # Colors
-BG = (13, 17, 23)
+BG = GITHUB_DARK_BG
 TEXT = (201, 209, 217)
 SUCCESS = (46, 160, 67)
 ERROR = (248, 81, 73)
@@ -286,24 +288,50 @@ def _start_fetch_async(allow_sync_fallback=True):
             fetching = False
 
 
-def update():
+def update() -> None:
+    """Main update loop for the HC911 app.
+
+    Orchestrates input handling (WiFi toggle and manual fetch), periodic WiFi
+    status checks, data fetching, and drawing the UI each frame.
+    """
     global font, last_fetch, status_text, error_msg
     global wifi_enabled, wlan, connect_attempted, last_wifi_check, wifi_was_connected, wifi_connect_start
-    
+    _clear_background()
+    _ensure_font()
+    _handle_wifi_toggle()
+    _periodic_wifi_status_check()
+    _handle_fetch_button()
+    _draw_header()
+    _draw_incident_data()
+    _draw_status_and_instructions()
+    _draw_activity_indicator()
+    return None
+
+
+# --- Helper functions for update() ---
+def _clear_background() -> None:
+    """Fill the screen with the background color for a fresh frame."""
     screen.brush = brushes.color(*BG)
     screen.clear()
-    
-    # Load font on first run
+
+def _ensure_font() -> None:
+    """Lazily load and set the pixel font used by this app."""
+    global font
     if font is None:
         try:
             font = PixelFont.load("/system/assets/fonts/ark.ppf")
         except Exception:
             pass
-    
     if font:
         screen.font = font
-    
-    # Handle WiFi toggle on B
+
+def _handle_wifi_toggle() -> None:
+    """Toggle WiFi on BUTTON_B and attempt connection using secrets.
+
+    On enable, attempts to import credentials and connect. On disable, shuts
+    down the WLAN and clears connection state.
+    """
+    global wifi_enabled, status_text, error_msg, wlan, connect_attempted, wifi_was_connected, wifi_connect_start
     if io.BUTTON_B in io.pressed:
         print(f"[hc911] Button B pressed, wifi_enabled={wifi_enabled}")
         wifi_enabled = not wifi_enabled
@@ -313,7 +341,6 @@ def update():
             try:
                 import network  # type: ignore
                 print("[hc911] Network module imported")
-                # Load WiFi credentials
                 try:
                     import sys
                     sys.path.insert(0, "/")
@@ -326,7 +353,6 @@ def update():
                     error_msg = "Create /secrets.py"
                     wifi_enabled = False
                     connect_attempted = False
-                
                 if wifi_enabled:
                     wlan = network.WLAN(network.STA_IF)
                     wlan.active(True)
@@ -365,21 +391,25 @@ def update():
             wifi_was_connected = False
             wifi_connect_start = 0
 
-    # Periodic WiFi status check
+def _periodic_wifi_status_check() -> None:
+    """Poll WiFi status periodically and auto-fetch when connected.
+
+    Also handles timeout/credential errors by surfacing status to the user and
+    resetting connection attempts after a grace period.
+    """
+    global last_wifi_check, wifi_was_connected, status_text, last_fetch, error_msg, wifi_enabled, connect_attempted, wlan, wifi_connect_start
     if wifi_enabled and connect_attempted and wlan:
-        if io.ticks - last_wifi_check > 1000:  # every second
+        if io.ticks - last_wifi_check > 1000:
             last_wifi_check = io.ticks
             try:
                 is_connected = wlan.isconnected()
                 status = wlan.status()
                 print(f"[hc911] WiFi check: connected={is_connected}, status={status}")
-                
                 if is_connected:
                     if not wifi_was_connected and not fetching:
-                        # First time connection established: auto-fetch once
                         print("[hc911] AUTO-FETCH triggered")
                         wifi_was_connected = True
-                        status_text = "Fetching..."  # Clear "WiFi connected" immediately
+                        status_text = "Fetching..."
                         last_fetch = io.ticks
                         try:
                             _start_fetch_async(allow_sync_fallback=False)
@@ -388,11 +418,9 @@ def update():
                             status_text = "Error"
                             error_msg = str(e)[:30]
                     elif (active_incidents is None and daily_total is None and yearly_total is None) and not fetching and wifi_was_connected:
-                        # Connected but no data and not currently fetching - show hint
                         status_text = "Press A to fetch"
                 else:
                     wifi_was_connected = False
-                    # Show status code, and timeout after 15s
                     try:
                         st = wlan.status()
                         status_text = f"WiFi status: {st}"
@@ -414,10 +442,11 @@ def update():
             except Exception:
                 pass
 
-    # Handle fetch button
+def _handle_fetch_button() -> None:
+    """Start a manual fetch when BUTTON_A is pressed and we're not already fetching."""
+    global last_fetch, error_msg, status_text
     if io.BUTTON_A in io.pressed and not fetching:
         print("[hc911] BUTTON A pressed - manual fetch")
-        # If there's a cached error (even if expired), show it briefly as tooltip
         if cached_error_msg and not error_msg:
             error_msg = f"Last: {cached_error_msg}"
         last_fetch = io.ticks
@@ -427,105 +456,91 @@ def update():
             print(f"[hc911] Manual fetch exception: {e}")
             status_text = "Error"
             error_msg = str(e)[:30]
-    
-    # Draw header
-    if font:
-        screen.brush = brushes.color(*TEXT)
-        screen.text("HC 911 Incidents", 5, 3)
-        # WiFi indicator
-        indicator = (SUCCESS, "ON") if (wifi_enabled and wlan) else (ERROR, "OFF")
-        screen.brush = brushes.color(*indicator[0])
-        screen.text(indicator[1], 135, 3)
-        # Show a small spinner while WiFi is connecting
-        try:
-            if wifi_enabled and wlan and not wlan.isconnected():
-                color = SUCCESS if (io.ticks // 150) % 2 == 0 else BG
-                screen.brush = brushes.color(*color)
-                # Note: MicroPython shapes.circle likely doesn't accept keyword args
-                screen.draw(shapes.circle(152, 6, 2))
-        except Exception:
-            pass
-        # Show a red error dot for ~10s after a fetch error (when not currently connecting)
-        try:
-            if (not (wifi_enabled and wlan and not wlan.isconnected())) and last_error_time > 0:
-                if io.ticks - last_error_time < 10000:
-                    screen.brush = brushes.color(*ERROR)
-                    screen.draw(shapes.circle(152, 6, 2))
-        except Exception:
-            pass
-    
-    # Draw incident data
-    if font:
-        y = 25
-        
-        if active_incidents is not None:
-            # Active incidents (large)
-            screen.brush = brushes.color(*WARNING)
-            screen.text("Active Now:", 5, y)
-            y += 12
-            
-            screen.brush = brushes.color(*SUCCESS)
-            count_str = str(active_incidents)
-            screen.text(count_str, 5, y)
-            y += 20
-            
-            # Daily total
-            if daily_total is not None:
-                screen.brush = brushes.color(*DIM)
-                screen.text(f"Today: {daily_total}", 5, y)
-                y += 12
-            
-            # Yearly total
-            if yearly_total is not None:
-                screen.brush = brushes.color(*DIM)
-                screen.text(f"Year: {yearly_total}", 5, y)
-                y += 12
-            
-            # Last update time
-            if last_fetch > 0:
-                elapsed = (io.ticks - last_fetch) // 1000
-                mins = elapsed // 60
-                secs = elapsed % 60
-                screen.brush = brushes.color(*DIM)
-                if mins > 0:
-                    screen.text(f"Updated {mins}m {secs}s ago", 5, y)
-                else:
-                    screen.text(f"Updated {secs}s ago", 5, y)
-        else:
-            # No data yet - show debug info
-            screen.brush = brushes.color(*DIM)
-            
-            # Show WiFi status if available
-            if wlan and connect_attempted:
-                try:
-                    is_conn = wlan.isconnected()
-                    stat = wlan.status()
-                    screen.text(f"WiFi: conn={is_conn}", 5, 20)
-                    screen.text(f"Status: {stat}", 5, 32)
-                except Exception:
-                    pass
-            
-            screen.text("No data loaded", 5, 47)
-            screen.text("Press A to fetch", 5, 59)
-    
-    # Draw status
-    if font:
-        screen.brush = brushes.color(*TEXT)
-        screen.text(status_text, 5, 80)
-        
-        if error_msg:
-            screen.brush = brushes.color(*ERROR)
-            screen.text(error_msg[:36], 5, 92)
-    
-    # Draw instructions
-    if font:
-        screen.brush = brushes.color(*WARNING)
-        if fetching:
-            screen.text("Fetching...", 5, 108)
-        else:
-            screen.text("A:Refresh  B:WiFi", 5, 108)
 
-    # Activity indicator
+def _draw_header() -> None:
+    """Draw the header, WiFi indicator, and transient error blip."""
+    if not font:
+        return
+    screen.brush = brushes.color(*TEXT)
+    screen.text("HC 911 Incidents", 5, 3)
+    indicator = (SUCCESS, "ON") if (wifi_enabled and wlan) else (ERROR, "OFF")
+    screen.brush = brushes.color(*indicator[0])
+    screen.text(indicator[1], 135, 3)
+    try:
+        if wifi_enabled and wlan and not wlan.isconnected():
+            color = SUCCESS if (io.ticks // 150) % 2 == 0 else BG
+            screen.brush = brushes.color(*color)
+            screen.draw(shapes.circle(152, 6, 2))
+    except Exception:
+        pass
+    try:
+        if (not (wifi_enabled and wlan and not wlan.isconnected())) and last_error_time > 0:
+            if io.ticks - last_error_time < 10000:
+                screen.brush = brushes.color(*ERROR)
+                screen.draw(shapes.circle(152, 6, 2))
+    except Exception:
+        pass
+
+def _draw_incident_data() -> None:
+    """Render incident counts and timestamps, or connection hints when empty."""
+    if not font:
+        return
+    y = 25
+    if active_incidents is not None:
+        screen.brush = brushes.color(*WARNING)
+        screen.text("Active Now:", 5, y)
+        y += 12
+        screen.brush = brushes.color(*SUCCESS)
+        count_str = str(active_incidents)
+        screen.text(count_str, 5, y)
+        y += 20
+        if daily_total is not None:
+            screen.brush = brushes.color(*DIM)
+            screen.text(f"Today: {daily_total}", 5, y)
+            y += 12
+        if yearly_total is not None:
+            screen.brush = brushes.color(*DIM)
+            screen.text(f"Year: {yearly_total}", 5, y)
+            y += 12
+        if last_fetch > 0:
+            elapsed = (io.ticks - last_fetch) // 1000
+            mins = elapsed // 60
+            secs = elapsed % 60
+            screen.brush = brushes.color(*DIM)
+            if mins > 0:
+                screen.text(f"Updated {mins}m {secs}s ago", 5, y)
+            else:
+                screen.text(f"Updated {secs}s ago", 5, y)
+    else:
+        screen.brush = brushes.color(*DIM)
+        if wlan and connect_attempted:
+            try:
+                is_conn = wlan.isconnected()
+                stat = wlan.status()
+                screen.text(f"WiFi: conn={is_conn}", 5, 20)
+                screen.text(f"Status: {stat}", 5, 32)
+            except Exception:
+                pass
+        screen.text("No data loaded", 5, 47)
+        screen.text("Press A to fetch", 5, 59)
+
+def _draw_status_and_instructions() -> None:
+    """Render status text, last error (if any), and control hints."""
+    if not font:
+        return
+    screen.brush = brushes.color(*TEXT)
+    screen.text(status_text, 5, 80)
+    if error_msg:
+        screen.brush = brushes.color(*ERROR)
+        screen.text(error_msg[:36], 5, 92)
+    screen.brush = brushes.color(*WARNING)
+    if fetching:
+        screen.text("Fetching...", 5, 108)
+    else:
+        screen.text("A:Refresh  B:WiFi", 5, 108)
+
+def _draw_activity_indicator() -> None:
+    """Blink a small activity dot while fetching."""
     if fetching:
         try:
             color = SUCCESS if (io.ticks // 150) % 2 == 0 else BG
@@ -533,7 +548,3 @@ def update():
             screen.draw(shapes.circle(4, 4, 2))
         except Exception:
             pass
-
-    return None
-
-    return None

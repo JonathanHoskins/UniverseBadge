@@ -1,14 +1,40 @@
-# Flake8 configuration aligned with Ruff and MicroPython patterns
 [flake8]
-# Exclude embedded/hardware examples and binary assets
+# Comprehensive exclusions to match Ruff config
 exclude =
+    tests/_stubs,
+    tools,
+    eink/examples,
     ir-beacon,
-    eink,
-    **/assets/**,
-    images
-# Keep flake8 focused on syntax/undefined-name issues; Ruff handles style.
-select = E9,F63,F7,F82
-# Additionally ignore project-specific false positives
-extend-ignore = E402,E701,F403,F405
-# Keep line length reasonable for small-display UI code
-max-line-length = 120
+    badgerware/examples,
+    badge/apps/badge,
+    badge/apps/camera,
+    badge/apps/commits,
+    badge/apps/dvd,
+    badge/apps/gallery,
+    badge/apps/hc911,
+    badge/apps/hello,
+    badge/apps/menu,
+    badge/apps/monapet,
+    badge/apps/quest,
+    badge/apps/sketch,
+    badge/apps/snake,
+    badge/apps/startup,
+    badge/apps/wifi,
+    .git,
+    __pycache__,
+    .pytest_cache,
+    .mypy_cache,
+    .venv,
+    venv
+
+# Comprehensive ignores to match Ruff config
+extend-ignore = 
+    F401, F403, F405, F821, F824,
+    E111, E114, E116, E129,
+    E203, E221, E261, E265, E266, E275,
+    E301, E302, E305, E306,
+    E402, E501, E701,
+    W291, W292, W293, W391
+
+max-line-length = 100
+

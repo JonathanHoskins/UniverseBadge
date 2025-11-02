@@ -4,14 +4,12 @@ import os
 sys.path.insert(0, "/system/apps/badge")
 os.chdir("/system/apps/badge")
 
-
-from badgeware import io, brushes, shapes, Image, run, PixelFont, screen, Matrix, file_exists
-import random
 import math
 import network
+from badgeware import io, brushes, shapes, Image, run, PixelFont, screen, Matrix, file_exists
+import random
 from urllib.urequest import urlopen
 import gc
-import sys
 import json
 
 

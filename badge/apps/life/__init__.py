@@ -1,5 +1,13 @@
+"""Conway's Game of Life visualization.
+
+This app runs an animated Game of Life on the badge display with GitHub-dark
+themed colors, periodically injecting interesting patterns when stagnation is
+detected. The update loop is split into small, testable helpers.
+"""
 from badgeware import screen, PixelFont, shapes, brushes, io, run, Matrix
 import random
+
+GITHUB_DARK_BG = (13, 17, 23)
 
 # GitHub contribution graph colors (dark mode) - based on neighbor count
 NEIGHBOR_COLORS = [
@@ -14,7 +22,7 @@ NEIGHBOR_COLORS = [
     (120, 255, 140),   # 8 neighbors - brightest green
 ]
 
-BACKGROUND_COLOR = (13, 17, 23)  # Dark GitHub background
+BACKGROUND_COLOR = GITHUB_DARK_BG  # Dark GitHub background
 TEXT_COLOR = (255, 255, 255)
 
 # Pre-create brushes for performance
@@ -30,7 +38,7 @@ GRID_WIDTH = 40  # 160 / 4
 GRID_HEIGHT = 30  # 120 / 4
 
 # Load font
-small_font = PixelFont.load("/system/assets/fonts/nope.ppf")
+small_font = PixelFont.load("assets/fonts/nope.ppf")
 
 # Pre-create shape for cells (reused for all cells)
 cell_rect = shapes.rectangle(0, 0, SQUARE_SIZE, SQUARE_SIZE)
@@ -218,35 +226,47 @@ game = GameOfLife()
 show_info = False
 info_timer = 0
 
-def update():
+def update() -> None:
     global show_info, info_timer
-    
-    # Clear screen with pre-created brush
+    _clear_screen()
+    _handle_input()
+    _maybe_update_game_logic()
+    _draw_grid()
+    _show_info_message()
+
+
+# --- Helper Functions for update ---
+def _clear_screen() -> None:
+    """Fill the display with the background color."""
     screen.brush = BACKGROUND_BRUSH
     screen.clear()
-    
-    # Handle input
+
+def _handle_input() -> None:
+    """Regenerate the board on B press and show a temporary message."""
+    global show_info, info_timer
     if io.BUTTON_B in io.pressed:
         game.randomize()
         show_info = True
         info_timer = io.ticks + 1000  # Show "Regenerated" for 1 second
-    
-    # Update game logic
+
+def _maybe_update_game_logic() -> None:
+    """Advance simulation at a fixed interval based on ticks."""
     if io.ticks - game.last_update > game.update_interval:
         game.last_update = io.ticks
         game.update()
-    
-    # Draw the grid
+
+def _draw_grid() -> None:
+    """Draw the current grid using neighbor-based color shading."""
     game.draw()
-    
-    # Show regeneration message
+
+def _show_info_message() -> None:
+    """Render the temporary info banner when recently regenerated."""
+    global show_info, info_timer
     if show_info and io.ticks < info_timer:
         msg = "Regenerated!"
         w, _ = screen.measure_text(msg)
-        # Draw background for text
         screen.brush = INFO_BG_BRUSH
         screen.draw(shapes.rectangle(80 - (w // 2) - 2, 55, w + 4, 10))
-        # Draw text
         screen.brush = TEXT_BRUSH
         screen.text(msg, 80 - (w // 2), 56)
     elif io.ticks >= info_timer:

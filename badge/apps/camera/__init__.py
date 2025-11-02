@@ -1,3 +1,9 @@
+"""Vintage camera app with a simple shooting animation and film counter.
+
+The app simulates a 35mm camera body with an animated aperture and flash
+overlay, along with a film counter that can be reloaded when empty.
+"""
+
 import sys
 import os
 
@@ -11,7 +17,9 @@ large_font = PixelFont.load("/system/assets/fonts/ark.ppf")
 
 
 class Camera:
-    def __init__(self):
+    """Drawable camera object with minimal animation state."""
+
+    def __init__(self) -> None:
         # Camera body dimensions (centered on screen)
         self.body_x = 40
         self.body_y = 30
@@ -37,13 +45,13 @@ class Camera:
         self.open_duration = 150    # aperture opens in 150ms
         self.total_duration = self.close_duration + self.closed_duration + self.open_duration
         
-    def trigger_shoot(self):
+    def trigger_shoot(self) -> None:
         """Start the camera shooting animation"""
         if not self.is_shooting:
             self.is_shooting = True
             self.shoot_start = io.ticks
     
-    def update(self):
+    def update(self) -> None:
         """Update animation state"""
         if self.is_shooting:
             elapsed = io.ticks - self.shoot_start
@@ -68,7 +76,7 @@ class Camera:
                 self.aperture_size = 1.0
                 self.flash_alpha = 0
     
-    def draw(self):
+    def draw(self) -> None:
         """Draw the vintage 35mm camera"""
         # Camera body (main rectangle)
         screen.brush = brushes.color(60, 60, 70)
@@ -136,7 +144,7 @@ class Camera:
         screen.text("MONA", self.body_x + 28, self.body_y + 50)
         screen.text("35mm", self.body_x + 30, self.body_y + 57)
         
-    def draw_flash_overlay(self):
+    def draw_flash_overlay(self) -> None:
         """Draw full-screen flash effect"""
         if self.flash_alpha > 30:
             screen.brush = brushes.color(255, 255, 255, self.flash_alpha)
@@ -148,7 +156,7 @@ photo_count = 0
 FILM_CAPACITY = 36
 
 
-def draw_used_film():
+def draw_used_film() -> None:
     """Draw a used roll of 35mm film"""
     # Film canister body
     can_x, can_y = 50, 35
@@ -203,71 +211,73 @@ def draw_used_film():
     screen.text(text, can_x + (can_w - w) // 2, can_y + 35)
 
 
-def update():
+def update() -> None:
     global photo_count
-    
-    # Clear screen
+    _clear_background()
+    if _is_film_full():
+        _draw_film_full_screen()
+        _maybe_handle_reload()
+    else:
+        _handle_shoot_input()
+        _update_and_draw_camera()
+        _draw_shoot_instructions()
+        _draw_photo_counter()
+    return None
+
+
+# --- Helper functions ---
+def _clear_background() -> None:
     screen.brush = brushes.color(20, 25, 30)
     screen.draw(shapes.rectangle(0, 0, 160, 120))
-    
-    # Check if film is full
-    film_full = photo_count >= FILM_CAPACITY
-    
-    if film_full:
-        # Show used film roll and reload instructions
-        draw_used_film()
-        
-        # Draw "FILM FULL" message
-        screen.font = large_font
-        screen.brush = brushes.color(255, 100, 100)
-        text = "FILM FULL!"
+
+def _is_film_full() -> bool:
+    return photo_count >= FILM_CAPACITY
+
+def _draw_film_full_screen() -> None:
+    draw_used_film()
+    screen.font = large_font
+    screen.brush = brushes.color(255, 100, 100)
+    text = "FILM FULL!"
+    w, _ = screen.measure_text(text)
+    screen.text(text, 80 - (w // 2), 5)
+    screen.font = small_font
+    if int(io.ticks / 500) % 2:
+        screen.brush = brushes.color(180, 180, 180)
+        text = "Press UP to reload"
         w, _ = screen.measure_text(text)
-        screen.text(text, 80 - (w // 2), 5)
-        
-        # Draw reload instruction
-        screen.font = small_font
-        if int(io.ticks / 500) % 2:
-            screen.brush = brushes.color(180, 180, 180)
-            text = "Press UP to reload"
-            w, _ = screen.measure_text(text)
-            screen.text(text, 80 - (w // 2), 105)
-        
-        # Handle reload
-        if io.BUTTON_UP in io.pressed:
-            photo_count = 0
-    else:
-        # Normal camera operation
-        # Handle input
-        if io.BUTTON_DOWN in io.pressed:
-            camera.trigger_shoot()
-            photo_count += 1
-        
-        # Update camera animation
-        camera.update()
-        
-        # Draw camera
-        camera.draw()
-        
-        # Draw flash overlay on top
-        camera.draw_flash_overlay()
-        
-        # Draw instructions
-        screen.font = small_font
-        if int(io.ticks / 500) % 2:
-            screen.brush = brushes.color(180, 180, 180)
-            text = "Press DOWN to shoot"
-            w, _ = screen.measure_text(text)
-            screen.text(text, 80 - (w // 2), 105)
-        
-        # Draw photo counter (remaining shots)
-        screen.font = large_font
-        remaining = FILM_CAPACITY - photo_count
-        screen.brush = brushes.color(211, 250, 55) if remaining > 5 else brushes.color(255, 100, 100)
-        counter_text = f"{remaining} left"
-        w, _ = screen.measure_text(counter_text)
-        screen.text(counter_text, 80 - (w // 2), 5)
-    
-    return None
+        screen.text(text, 80 - (w // 2), 105)
+
+def _maybe_handle_reload() -> None:
+    global photo_count
+    if io.BUTTON_UP in io.pressed:
+        photo_count = 0
+
+def _handle_shoot_input() -> None:
+    global photo_count
+    if io.BUTTON_DOWN in io.pressed:
+        camera.trigger_shoot()
+        photo_count += 1
+
+def _update_and_draw_camera() -> None:
+    camera.update()
+    camera.draw()
+    camera.draw_flash_overlay()
+
+def _draw_shoot_instructions() -> None:
+    screen.font = small_font
+    if int(io.ticks / 500) % 2:
+        screen.brush = brushes.color(180, 180, 180)
+        text = "Press DOWN to shoot"
+        w, _ = screen.measure_text(text)
+        screen.text(text, 80 - (w // 2), 105)
+
+def _draw_photo_counter() -> None:
+    screen.font = large_font
+    remaining = FILM_CAPACITY - photo_count
+    screen.brush = brushes.color(211, 250, 55) if remaining > 5 else brushes.color(255, 100, 100)
+    counter_text = f"{remaining} left"
+    w, _ = screen.measure_text(counter_text)
+    screen.text(counter_text, 80 - (w // 2), 5)
 
 
 if __name__ == "__main__":

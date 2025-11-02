@@ -1,7 +1,16 @@
 """
-WiFi Connection Test App
-Shows WiFi status and connection information with scrollable network stats
+WiFi Connection Test App.
+
+Displays current WiFi connection state and a scrollable set of network stats.
+Button mapping:
+- A: Toggle WiFi on/off
+- C: Switch between status log and stats view (when connected)
+- UP/DOWN: Scroll in stats view
 """
+
+from __future__ import annotations
+
+from typing import List, Optional, Tuple
 
 from badgeware import screen, PixelFont, shapes, brushes, io
 
@@ -27,10 +36,11 @@ DIM = (88, 96, 105)
 ITEMS_PER_PAGE = 4  # number of stats entries visible per screen
 
 
-def get_network_stats():
-    """Gather detailed network statistics for display.
-    Returns list of tuples: (label, value, color_override)
-    color_override is optional - if present, use that color for the value.
+def get_network_stats() -> List[Tuple[str, str, Optional[Tuple[int, int, int]]]]:
+    """Collect network statistics for the current connection.
+
+    Returns a list of tuples: (label, value, color_override).
+    color_override is optional; if present, it overrides the default text color.
     """
     if not wlan or not wlan.isconnected():
         return []
@@ -81,48 +91,39 @@ def get_network_stats():
     return stats
 
 
-def add_status(text):
-    """Add a status line (keeps last 8 lines)."""
+def add_status(text: str) -> None:
+    """Append a status line to the log (keeps the last 8 lines)."""
     global status_lines
     status_lines.append(text)
     if len(status_lines) > 8:
         status_lines = status_lines[-8:]
 
 
-def update():
-    global font, wifi_enabled, wlan, connect_attempted, last_update
-    global view_mode, stats_scroll, connection_start_time
-    
-    screen.brush = brushes.color(*BG)
-    screen.clear()
-    
-    # Load font on first run
+def _ensure_font() -> None:
+    global font
     if font is None:
         try:
             font = PixelFont.load("/system/assets/fonts/ark.ppf")
             add_status("App started")
         except Exception as e:
             add_status(f"Font error: {str(e)[:20]}")
-    
-    if font:
-        screen.font = font
-    
-    # Handle view mode toggle with C button
+
+def _handle_input() -> None:
+    global view_mode, stats_scroll, wifi_enabled, connect_attempted, wlan, connection_start_time
+    # Toggle view mode
     if io.BUTTON_C in io.pressed:
         if wlan and wlan.isconnected():
             view_mode = "stats" if view_mode == "status" else "status"
             stats_scroll = 0
         else:
             add_status("Connect WiFi first!")
-    
-    # Handle scrolling in stats view
+    # Scroll in stats view
     if view_mode == "stats":
         if io.BUTTON_UP in io.pressed:
             stats_scroll = max(0, stats_scroll - 1)
         if io.BUTTON_DOWN in io.pressed:
             stats_scroll = min(max_stats_scroll, stats_scroll + 1)
-    
-    # Handle WiFi toggle with A button
+    # Toggle WiFi
     if io.BUTTON_A in io.pressed:
         wifi_enabled = not wifi_enabled
         if wifi_enabled:
@@ -139,19 +140,17 @@ def update():
             connect_attempted = False
             connection_start_time = 0
             view_mode = "status"
-    
-    # Try to connect if enabled and not yet attempted
+
+def _handle_wifi_connect() -> None:
+    global wifi_enabled, connect_attempted, wlan
     if wifi_enabled and not connect_attempted:
         try:
-            # Import network module
             import network
             add_status("Network module loaded")
-            
-            # Load WiFi credentials
             try:
                 import sys
                 sys.path.insert(0, "/")
-                from secrets import WIFI_SSID, WIFI_PASSWORD
+                from secrets import WIFI_SSID, WIFI_PASSWORD  # type: ignore[attr-defined]
                 sys.path.pop(0)
                 add_status(f"SSID: {WIFI_SSID[:15]}")
             except Exception as e:
@@ -159,26 +158,22 @@ def update():
                 add_status("Create /secrets.py")
                 wifi_enabled = False
                 connect_attempted = True
-            
             if wifi_enabled:
-                # Initialize WLAN
                 wlan = network.WLAN(network.STA_IF)
                 wlan.active(True)
                 add_status("WLAN activated")
-                
-                # Connect
                 wlan.connect(WIFI_SSID, WIFI_PASSWORD)
                 add_status("Connecting...")
                 connect_attempted = True
-                
         except Exception as e:
             add_status(f"Error: {str(e)[:30]}")
             wifi_enabled = False
             connect_attempted = True
-    
-    # Check connection status periodically
+
+def _check_connection_status() -> None:
+    global last_update, connection_start_time
     if wifi_enabled and connect_attempted and wlan:
-        if io.ticks - last_update > 1000:  # Check every second
+        if io.ticks - last_update > 1000:
             last_update = io.ticks
             try:
                 if wlan.isconnected():
@@ -194,31 +189,16 @@ def update():
                     add_status(f"Status: {status}")
             except Exception as e:
                 add_status(f"Check error: {str(e)[:20]}")
-    
-    # Draw based on view mode
-    if view_mode == "stats":
-        draw_stats_view()
-    else:
-        draw_status_view()
 
-    return None
-
-
-def draw_status_view():
-    """Draw the status log view."""
-    
-    # Draw header
+def draw_status_view() -> None:
+    """Draw the status log view with title, ON/OFF, and recent messages."""
     if font:
         screen.brush = brushes.color(*TEXT)
         screen.text("WiFi Test", 5, 3)
-        
-        # Draw WiFi status indicator
         status_text = "ON" if wifi_enabled else "OFF"
         color = SUCCESS if wifi_enabled else ERROR
         screen.brush = brushes.color(*color)
         screen.text(status_text, 135, 3)
-    
-    # Draw status lines
     if font:
         screen.brush = brushes.color(*TEXT)
         y = 20
@@ -226,16 +206,12 @@ def draw_status_view():
             if y < 105:
                 screen.text(line[:26], 5, y)
                 y += 10
-    
-    # Draw instructions
     if font:
         screen.brush = brushes.color(*WARNING)
         if wlan and wlan.isconnected():
             screen.text("A:WiFi C:Stats", 5, 108)
         else:
             screen.text("A:Toggle WiFi", 5, 108)
-    
-    # Heartbeat indicator
     try:
         color = SUCCESS if (io.ticks // 250) % 2 == 0 else BG
         screen.brush = brushes.color(*color)
@@ -243,66 +219,63 @@ def draw_status_view():
     except Exception:
         pass
 
-
-def draw_stats_view():
-    """Draw the network statistics view with scrolling."""
+def draw_stats_view() -> None:
+    """Draw the network statistics view with paging/scroll support."""
     global max_stats_scroll
-    
-    # Draw header
     if font:
         screen.brush = brushes.color(*TEXT)
         screen.text("Network Stats", 5, 3)
-        
-        # Draw WiFi status indicator
         color = SUCCESS if wifi_enabled else ERROR
         screen.brush = brushes.color(*color)
         screen.text("ON", 135, 3)
-    
-    # Get stats
     stats = get_network_stats()
-    # Compute max scroll - allow scrolling one item at a time
     max_stats_scroll = max(0, len(stats) - ITEMS_PER_PAGE)
-    
-    # Draw stats (scrollable by item, not by page)
     if font and stats:
         y = 20
         visible_stats = stats[stats_scroll:stats_scroll + ITEMS_PER_PAGE]
         for item in visible_stats:
-            # Unpack with optional color override
-            label, value, color_override = item
-            
-            # Draw label in dim color
+            if len(item) == 3:
+                label, value, color_override = item
+            else:
+                label, value = item
+                color_override = None
             screen.brush = brushes.color(*DIM)
             screen.text(f"{label}:", 5, y)
-            
-            # Draw value with optional color override
             if color_override:
                 screen.brush = brushes.color(*color_override)
             else:
                 screen.brush = brushes.color(*TEXT)
             screen.text(str(value)[:20], 5, y + 10)
-            
             y += 20
             if y >= 100:
                 break
-    
-    # Draw scroll indicator if needed
     if font and len(stats) > ITEMS_PER_PAGE:
-        # Show page number: which page we're viewing
-        current_page = ((stats_scroll + ITEMS_PER_PAGE) // ITEMS_PER_PAGE)
+        current_page = (stats_scroll // ITEMS_PER_PAGE) + 1
         total_pages = (len(stats) + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE
         screen.brush = brushes.color(*DIM)
         screen.text(f"Page {current_page}/{total_pages}", 95, 98)
-    
-    # Draw instructions
     if font:
         screen.brush = brushes.color(*WARNING)
         screen.text("C:Back UP/DOWN:Scroll", 5, 108)
-    
-    # Heartbeat indicator
     try:
         color = SUCCESS if (io.ticks // 250) % 2 == 0 else BG
         screen.brush = brushes.color(*color)
         screen.draw(shapes.circle(4, 4, 2))
     except Exception:
         pass
+
+def update() -> None:
+    global font
+    screen.brush = brushes.color(*BG)
+    screen.clear()
+    _ensure_font()
+    if font:
+        screen.font = font
+    _handle_input()
+    _handle_wifi_connect()
+    _check_connection_status()
+    if view_mode == "stats":
+        draw_stats_view()
+    else:
+        draw_status_view()
+    return None

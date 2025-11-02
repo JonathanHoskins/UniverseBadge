@@ -1,3 +1,9 @@
+"""Flappy Mona game.
+
+This app implements a side-scrolling game inspired by Flappy Bird using
+badgeware primitives. The update loop is decomposed into small helpers for
+intro, gameplay, and game-over states. Fonts are sourced from shared constants.
+"""
 import sys
 import os
 
@@ -11,8 +17,8 @@ from obstacle import Obstacle
 background = Image.load("assets/background.png")
 grass = Image.load("assets/grass.png")
 cloud = Image.load("assets/cloud.png")
-large_font = PixelFont.load("/system/assets/fonts/ziplock.ppf")
-small_font = PixelFont.load("/system/assets/fonts/nope.ppf")
+large_font = PixelFont.load("assets/fonts/ziplock.ppf")
+small_font = PixelFont.load("assets/fonts/nope.ppf")
 ghost = SpriteSheet("/system/assets/mona-sprites/mona-dead.png", 7, 1).animation()
 mona = None
 
@@ -26,7 +32,8 @@ class GameState:
 state = GameState.INTRO
 
 
-def update():
+def update() -> None:
+    """Main update loop that dispatches per-state handlers."""
     draw_background()
 
     if state == GameState.INTRO:
@@ -43,20 +50,11 @@ def update():
 # tell the player how to start the game
 
 
-def intro():
+def intro() -> None:
+    """Render intro UI and transition to PLAYING when A is pressed."""
     global state, mona
-
-    # draw title
-    screen.font = large_font
-    center_text("FLAPPY MONA", 38)
-
-    # blink button message
-    if int(io.ticks / 500) % 2:
-        screen.font = small_font
-        center_text("Press A to start", 70)
-
-    if io.BUTTON_A in io.pressed:
-        # reset game state
+    _draw_intro_ui()
+    if _should_start_game():
         state = GameState.PLAYING
         Obstacle.obstacles = []
         Obstacle.next_spawn_time = io.ticks + 500
@@ -67,60 +65,26 @@ def intro():
 # draw the background and sprites
 
 
-def play():
+def play() -> None:
+    """Advance gameplay: input, physics, spawning, draw; detect game over."""
     global state
-
-    # if the user has pressed A then make mona jump for her life!
-    if not mona.is_dead() and io.BUTTON_A in io.pressed:
-        mona.jump()
-
-    # update player and check for collision
-    mona.update()
-
-    # spawn a new obstacle if the spawn timer has elapsed
-    if not mona.is_dead() and Obstacle.next_spawn_time and io.ticks > Obstacle.next_spawn_time:
-        Obstacle.spawn()
-
-    # update obstacle positions and draw them
-    for obstacle in Obstacle.obstacles:
-        if not mona.is_dead():
-            obstacle.update()
-        obstacle.draw()
-
-    # draw our hero, mona
-    mona.draw()
-
-    # show the player their current score
-    screen.font = small_font
-    shadow_text(f"Score: {mona.score}", 3, 0)
-
-    # has mona died this frame? if so it's... GAME OVER
-    if mona.is_dead():
-        if mona.is_done_dying():
-            state = GameState.GAME_OVER
+    _handle_play_input()
+    _update_player()
+    _spawn_obstacles_if_needed()
+    _update_and_draw_obstacles()
+    _draw_player_and_score()
+    if _is_game_over():
+        state = GameState.GAME_OVER
 
 # handle the GAME OVER screen. show the player what score they achieved and
 # provide instructions for how to start again
 
 
-def game_over():
+def game_over() -> None:
+    """Render game-over UI and return to intro when A is pressed."""
     global state
-
-    # game over caption
-    screen.font = large_font
-    center_text("GAME OVER!", 18)
-
-    # players final score
-    screen.font = small_font
-    center_text(f"Final score: {mona.score}", 40)
-
-    # flash press button message
-    if int(io.ticks / 500) % 2:
-        screen.brush = brushes.color(255, 255, 255)
-        center_text("Press A to restart", 70)
-
-    if io.BUTTON_A in io.pressed:
-        # return game to intro state
+    _draw_game_over_ui()
+    if _should_restart():
         state = GameState.INTRO
 
 
@@ -128,45 +92,114 @@ def game_over():
 background_offset = 0
 
 
-def draw_background():
+def draw_background() -> None:
+    """Draw parallax sky, clouds, and grass with a scrolling offset."""
     global background_offset
-
-    # clear the whole screen in a bright blue
-    screen.brush = brushes.color(73, 219, 255)
-    screen.draw(shapes.rectangle(0, 0, 160, 120))
-
-    # if we're on the intro screen or mona is alive then scroll the background
-    if not mona or not mona.is_dead() or state == GameState.INTRO:
-        background_offset += 1
-
-    for i in range(3):
-        # draw the distance background
-        bo = ((-background_offset / 8) % background.width) - screen.width
-        screen.blit(background, bo + (background.width * i),
-                    120 - background.height)
-
-        # draw the cloud background
-        bo = ((-background_offset / 8) % (cloud.width * 2)) - screen.width
-        screen.blit(cloud, bo + (cloud.width * 2 * i), 20)
-
-    for i in range(3):
-        # draw the grass layer
-        bo = ((-background_offset / 4) % (grass.width)) - screen.width
-        screen.blit(grass, bo + (grass.width * i), 120 - grass.height)
+    _clear_sky()
+    _update_background_offset()
+    _draw_parallax_layers()
 
 # a couple of helper functions for formatting text
 
 
-def shadow_text(text, x, y):
+def shadow_text(text: str, x: int, y: int) -> None:
+    """Draw text with a subtle drop shadow at the given coordinates."""
     screen.brush = brushes.color(20, 40, 60, 100)
     screen.text(text, x + 1, y + 1)
     screen.brush = brushes.color(255, 255, 255)
     screen.text(text, x, y)
 
 
-def center_text(text, y):
+def center_text(text: str, y: int) -> None:
+    """Horizontally center text at the provided y position."""
     w, _ = screen.measure_text(text)
     shadow_text(text, 80 - (w / 2), y)
+
+
+# --- Helper functions ---
+def _draw_intro_ui() -> None:
+    """Intro screen title and blinking prompt."""
+    screen.font = large_font
+    center_text("FLAPPY MONA", 38)
+    if int(io.ticks / 500) % 2:
+        screen.font = small_font
+        center_text("Press A to start", 70)
+
+def _should_start_game() -> bool:
+    """Return True if A was pressed to start the game."""
+    return io.BUTTON_A in io.pressed
+
+def _handle_play_input() -> None:
+    """Handle in-game input (jump on A) while alive."""
+    if mona and not mona.is_dead() and io.BUTTON_A in io.pressed:
+        mona.jump()
+
+def _update_player() -> None:
+    """Advance player physics/animation one tick."""
+    if mona:
+        mona.update()
+
+def _spawn_obstacles_if_needed() -> None:
+    """Spawn obstacles on a schedule while player is alive."""
+    if mona and not mona.is_dead() and Obstacle.next_spawn_time and io.ticks > Obstacle.next_spawn_time:
+        Obstacle.spawn()
+
+def _update_and_draw_obstacles() -> None:
+    """Update active obstacles (if alive) and draw them."""
+    for obstacle in Obstacle.obstacles:
+        if mona and not mona.is_dead():
+            obstacle.update()
+        obstacle.draw()
+
+def _draw_player_and_score() -> None:
+    """Draw the player and current score in the HUD."""
+    if mona:
+        mona.draw()
+        screen.font = small_font
+        shadow_text(f"Score: {mona.score}", 3, 0)
+
+def _is_game_over() -> bool:
+    """Return True when the player has finished the death animation."""
+    if mona and mona.is_dead() and mona.is_done_dying():
+        return True
+    return False
+
+def _draw_game_over_ui() -> None:
+    """Game-over title, final score, and restart prompt."""
+    screen.font = large_font
+    center_text("GAME OVER!", 18)
+    screen.font = small_font
+    if mona:
+        center_text(f"Final score: {mona.score}", 40)
+    if int(io.ticks / 500) % 2:
+        screen.brush = brushes.color(255, 255, 255)
+        center_text("Press A to restart", 70)
+
+def _should_restart() -> bool:
+    """Return True if A was pressed to restart from game-over."""
+    return io.BUTTON_A in io.pressed
+
+def _clear_sky() -> None:
+    """Fill the background with sky color."""
+    screen.brush = brushes.color(73, 219, 255)
+    screen.draw(shapes.rectangle(0, 0, 160, 120))
+
+def _update_background_offset() -> None:
+    """Increment parallax offset while intro or player alive."""
+    global background_offset
+    if not mona or not mona.is_dead() or state == GameState.INTRO:
+        background_offset += 1
+
+def _draw_parallax_layers() -> None:
+    """Render background, clouds, and grass with parallax scrolling."""
+    for i in range(3):
+        bo = ((-background_offset / 8) % background.width) - screen.width
+        screen.blit(background, bo + (background.width * i), 120 - background.height)
+        bo = ((-background_offset / 8) % (cloud.width * 2)) - screen.width
+        screen.blit(cloud, bo + (cloud.width * 2 * i), 20)
+    for i in range(3):
+        bo = ((-background_offset / 4) % (grass.width)) - screen.width
+        screen.blit(grass, bo + (grass.width * i), 120 - grass.height)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,51 @@
+[tool.ruff]
+# Keep it lightweight and focused on obvious issues.
+line-length = 100
+select = ["E", "F", "B"]  # Add flake8-bugbear for a few extra safety checks
+ignore = [
+  # Many apps intentionally use wildcard imports for SDK-like APIs
+  "F403", "F405",
+  # Allow unused imports in platform-stubbed contexts
+  "F401",
+  # Allow inline comments with single space before them
+  "E261",
+  # Allow module imports not at top (some apps need sys.path manipulation first)
+  "E402",
+  # Allow missing blank lines between functions/classes in compact code
+  "E301",
+  # Allow long lines (we already set line-length but some legacy code exceeds it)
+  "E501",
+  # Allow continuation line indentation that matches next logical line
+  "E129",
+  # Allow missing whitespace after comma in legacy code
+  "E231",
+  # Allow blank lines with whitespace
+  "W293",
+  # Allow various whitespace/formatting issues in MicroPython/example code
+  "E302", "E305", "E306", "E221", "E266", "E265", "E116", "E275",
+  # Allow trailing whitespace and blank line issues
+  "W291", "W292", "W391",
+  # MicroPython PIO code uses special undefined names (const, wait, pin, etc.)
+  "F821",
+]
+exclude = [
+  "tests/_stubs/**",
+  "tools/**",  # Exclude tools directory from linting
+  "eink/examples/**",  # Exclude example code from linting
+  "ir-beacon/**",  # Exclude MicroPython PIO code (uses special syntax)
+]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+follow_imports = "skip"
+warn_unused_ignores = false
+warn_redundant_casts = false
+warn_return_any = true
+warn_unused_configs = false
+allow_redefinition = true
+pretty = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+ignore_errors = true

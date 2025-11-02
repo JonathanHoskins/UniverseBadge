@@ -11,7 +11,7 @@ def _install_badgeware_stub():
     stubs_dir = Path(__file__).parent / "_stubs"
     if str(stubs_dir) not in sys.path:
         sys.path.insert(0, str(stubs_dir))
-    
+
     # Ensure repo root is on sys.path so `badge` package can be imported
     repo_root = Path(__file__).resolve().parents[1]
     if str(repo_root) not in sys.path:
@@ -26,9 +26,11 @@ def _install_os_chdir_noop():
     # Copy attributes from real os
     for name in dir(_real_os):
         setattr(proxy, name, getattr(_real_os, name))
+
     # Override chdir to noop
     def _noop_chdir(_path):
         return None
+
     proxy.chdir = _noop_chdir  # type: ignore[attr-defined]
     sys.modules["os"] = proxy
     sys._badge_tests_os_stub = True  # type: ignore[attr-defined]
@@ -52,9 +54,9 @@ def _preload_sibling_modules(app_name: str):
     if app_name == "flappy":
         # Ensure obstacle comes before mona
         siblings = sorted(siblings, key=lambda p: (p.stem != "obstacle", p.stem))
-    
+
     modules_to_exec = []
-    
+
     for py in siblings:
         mod_name = f"badge.apps.{app_name}.{py.stem}"
         if mod_name not in sys.modules:
@@ -68,7 +70,7 @@ def _preload_sibling_modules(app_name: str):
                     modules_to_exec.append((spec, mod))
             except Exception as ex:
                 print(f"Warning: Failed to create module spec for {mod_name}: {ex}")
-    
+
     # Now execute all the modules in a second pass
     for spec, mod in modules_to_exec:
         try:

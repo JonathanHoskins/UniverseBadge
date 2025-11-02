@@ -57,6 +57,52 @@ We've also included a small suite of example applications to demonstrate how dif
 
 For an overview of how to put the badge into different modes checkout https://badger.github.io/get-started/.
 
+### Local development (desktop) and tests
+
+This repository includes lightweight stubs so you can develop and run tests on a desktop Python without the badge hardware.
+
+- Tests live under `tests/` and use `_stubs/` to emulate the `badgeware` and `network` APIs.
+- A smoke test attempts to import most apps and run a single `update()` call.
+- Helper-level tests focus on small, isolated pieces of logic for reliability.
+
+Run tests locally:
+
+```powershell
+# From the repo root
+python -m pytest -q
+```
+
+Optional linting and types (if you install tools):
+
+```powershell
+# Ruff (style/lint)
+ruff check .
+
+# mypy (static types)
+mypy .
+```
+
+### Shared constants (badge/common.py)
+
+Apps can import shared values for screen size, common colors, and bundled font paths from `badge/common.py` to keep things consistent and easy to change in one place.
+
+Examples:
+
+```python
+from badge.common import (
+  SCREEN_WIDTH, SCREEN_HEIGHT,
+  GITHUB_DARK_BG,
+  FONT_ARK, FONT_NOPE, FONT_ABSOLUTE, FONT_ZIPLOCK,
+)
+
+# Use a shared background color
+screen.brush = brushes.color(*GITHUB_DARK_BG)
+screen.clear()
+
+# Load a font consistently across apps
+screen.font = PixelFont.load(FONT_ARK)
+```
+
 ### Creating your own apps
 The structure for apps is as follows. They live in the `/system/apps` directory.
 
