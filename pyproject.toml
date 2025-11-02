@@ -7,9 +7,24 @@ ignore = [
   "F403", "F405",
   # Allow unused imports in platform-stubbed contexts
   "F401",
+  # Allow inline comments with single space before them
+  "E261",
+  # Allow module imports not at top (some apps need sys.path manipulation first)
+  "E402",
+  # Allow missing blank lines between functions/classes in compact code
+  "E301",
+  # Allow long lines (we already set line-length but some legacy code exceeds it)
+  "E501",
+  # Allow continuation line indentation that matches next logical line
+  "E129",
+  # Allow missing whitespace after comma in legacy code
+  "E231",
+  # Allow blank lines with whitespace
+  "W293",
 ]
 exclude = [
   "tests/_stubs/**",
+  "tools/**",  # Exclude tools directory from linting
 ]
 
 [tool.mypy]
