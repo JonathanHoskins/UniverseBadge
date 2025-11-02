@@ -44,7 +44,6 @@ def fetch_incidents():
     try:
         print("[hc911] Importing network modules")
         # Import network modules
-        import network  # type: ignore
         import socket
         
         # Try to import ssl for HTTPS support
