@@ -37,3 +37,4 @@ extend-ignore =
     W291, W292, W293, W391
 
 max-line-length = 100
+

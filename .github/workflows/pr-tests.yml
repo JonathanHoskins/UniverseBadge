@@ -3,6 +3,8 @@ name: PR Test Checks
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
+  # Manual trigger option for maintainers
+  workflow_dispatch:
 
 jobs:
   test:
@@ -19,7 +21,7 @@ jobs:
       - name: Install dependencies
         run: |
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          pip install pytest ruff mypy flake8
+          pip install pytest ruff mypy
 
       - name: Run ruff (fast linter/formatter check)
         run: |
@@ -31,11 +33,6 @@ jobs:
           echo "Running mypy..."
             # Configuration in mypy.ini
             mypy badge/ tests/
-
-      - name: Run flake8 (style/linting)
-        run: |
-          echo "Running flake8..."
-          flake8 .
 
       - name: Run pytest
         run: pytest -q
