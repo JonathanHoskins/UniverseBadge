@@ -17,8 +17,8 @@ from obstacle import Obstacle
 background = Image.load("assets/background.png")
 grass = Image.load("assets/grass.png")
 cloud = Image.load("assets/cloud.png")
-large_font = PixelFont.load("assets/fonts/ziplock.ppf")
-small_font = PixelFont.load("assets/fonts/nope.ppf")
+large_font = PixelFont.load("/system/assets/fonts/ziplock.ppf")
+small_font = PixelFont.load("/system/assets/fonts/nope.ppf")
 ghost = SpriteSheet("/system/assets/mona-sprites/mona-dead.png", 7, 1).animation()
 mona = None
 
