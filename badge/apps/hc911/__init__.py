@@ -19,6 +19,7 @@ wlan = None
 connect_attempted = False
 last_wifi_check = 0
 wifi_was_connected = False
+last_error_time = 0
 
 # Colors
 BG = (13, 17, 23)
@@ -31,7 +32,7 @@ DIM = (88, 96, 105)
 
 def fetch_incidents():
     """Fetch incident data from Hamilton County 911 website."""
-    global active_incidents, daily_total, yearly_total, status_text, error_msg, fetching
+    global active_incidents, daily_total, yearly_total, status_text, error_msg, fetching, last_error_time
     
     fetching = True
     status_text = "Fetching..."
@@ -47,6 +48,10 @@ def fetch_incidents():
         if not (wlan and wlan.isconnected()):
             status_text = "WiFi not connected"
             error_msg = "Press B to enable WiFi"
+            try:
+                last_error_time = io.ticks
+            except Exception:
+                pass
             fetching = False
             return
         
@@ -120,13 +125,23 @@ def fetch_incidents():
         
         if active_incidents is not None:
             status_text = "Updated"
+            # Clear any previous error indicator on success
+            last_error_time = 0
         else:
             status_text = "Parse error"
             error_msg = "Could not find data"
+            try:
+                last_error_time = io.ticks
+            except Exception:
+                pass
         
     except Exception as e:
         status_text = "Error"
         error_msg = str(e)[:30]
+        try:
+            last_error_time = io.ticks
+        except Exception:
+            pass
     finally:
         fetching = False
 
@@ -239,6 +254,14 @@ def update():
                 color = SUCCESS if (io.ticks // 150) % 2 == 0 else BG
                 screen.brush = brushes.color(*color)
                 screen.draw(shapes.circle(152, 6, 2))
+        except Exception:
+            pass
+        # Show a red error dot for ~10s after a fetch error (when not currently connecting)
+        try:
+            if (not (wifi_enabled and wlan and not wlan.isconnected())) and last_error_time > 0:
+                if io.ticks - last_error_time < 10000:
+                    screen.brush = brushes.color(*ERROR)
+                    screen.draw(shapes.circle(152, 6, 2))
         except Exception:
             pass
     
