@@ -261,7 +261,7 @@ def update():
             if wifi_enabled and wlan and not wlan.isconnected():
                 color = SUCCESS if (io.ticks // 150) % 2 == 0 else BG
                 screen.brush = brushes.color(*color)
-                screen.draw(shapes.circle(152, 6, 2))
+                screen.draw(shapes.circle(152, 6, radius=2))
         except Exception:
             pass
         # Show a red error dot for ~10s after a fetch error (when not currently connecting)
@@ -269,7 +269,7 @@ def update():
             if (not (wifi_enabled and wlan and not wlan.isconnected())) and last_error_time > 0:
                 if io.ticks - last_error_time < 10000:
                     screen.brush = brushes.color(*ERROR)
-                    screen.draw(shapes.circle(152, 6, 2))
+                    screen.draw(shapes.circle(152, 6, radius=2))
         except Exception:
             pass
     
@@ -338,8 +338,10 @@ def update():
         try:
             color = SUCCESS if (io.ticks // 150) % 2 == 0 else BG
             screen.brush = brushes.color(*color)
-            screen.draw(shapes.circle(4, 4, 2))
+            screen.draw(shapes.circle(4, 4, radius=2))
         except Exception:
             pass
+    
+    return None
     
     return None
