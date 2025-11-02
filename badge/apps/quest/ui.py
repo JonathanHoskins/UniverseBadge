@@ -1,11 +1,21 @@
+"""UI helpers for the Quest app.
+
+Renders the status header and a 3x3 grid of quest tiles with animated borders.
+Functions are pure drawing helpers using the global screen.
+"""
+
+from __future__ import annotations
+
 import math
+from typing import List
 from badgeware import *
+from badge.common import FONT_IGNORE, FONT_ARK
 
 screen.antialias = Image.X2
 
 mona = Image.load("assets/mona.png")
-large_font = PixelFont.load("/system/assets/fonts/ignore.ppf")
-small_font = PixelFont.load("/system/assets/fonts/ark.ppf")
+large_font = PixelFont.load(FONT_IGNORE)
+small_font = PixelFont.load(FONT_ARK)
 
 tile_colors = [
   None,
@@ -20,7 +30,8 @@ tile_colors = [
   brushes.color(25, 108, 46),
 ]
 
-def draw_status(complete):
+def draw_status(complete: List[int]) -> None:
+  """Draw the status header showing completed count."""
   screen.blit(mona, 0, 72)
   screen.font = small_font
   screen.brush = brushes.color(255, 255, 255)
@@ -33,7 +44,8 @@ def draw_status(complete):
   screen.text("found", 7, 30)
 
 
-def draw_tiles(complete):
+def draw_tiles(complete: List[int]) -> None:
+  """Draw the 3x3 tile grid and fill completed tiles."""
   # define tile shape and set position of tile grid
   tile = shapes.squircle(0, 0, 1, 6)
   pos = (70, 31)

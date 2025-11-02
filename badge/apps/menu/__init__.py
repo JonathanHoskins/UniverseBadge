@@ -1,9 +1,11 @@
-import sys
+"""Badge app launcher menu.
+
+Auto-discovers installed apps under /system/apps, paginates their icons, and
+launches the selected app. The update flow is decomposed into helper functions
+for pagination, input handling, and drawing.
+"""
 import os
-
-sys.path.insert(0, "/system/apps/menu")
 os.chdir("/system/apps/menu")
-
 import math
 from badgeware import screen, PixelFont, Image, SpriteSheet, is_dir, file_exists, shapes, brushes, io, run
 from icon import Icon
@@ -35,7 +37,7 @@ current_page = 0
 total_pages = 1
 
 # find installed apps and create icons for current page
-def load_page_icons(page):
+def load_page_icons(page: int):
     icons = []
     start_idx = page * APPS_PER_PAGE
     end_idx = min(start_idx + APPS_PER_PAGE, len(apps))
@@ -68,18 +70,39 @@ MAX_ALPHA = 255
 alpha = 30
 
 
-def update():
+def update() -> str | None:
+
     global active, icons, alpha, current_page, total_pages
 
-    # recalculate total pages in case apps were added/removed
+    _recalculate_total_pages()
+    _ensure_current_page_in_bounds()
+    _handle_input()
+    _handle_wrapping_and_pagination()
+    app_path = _handle_app_launch()
+    if app_path:
+        return app_path
+
+    _draw_menu_ui()
+    _draw_icons_and_labels()
+    _draw_page_indicator()
+    _draw_fade_in()
+
+    return None
+
+
+# --- Helper Functions ---
+def _recalculate_total_pages() -> None:
+    global total_pages
     total_pages = max(1, math.ceil(len(apps) / APPS_PER_PAGE))
 
-    # ensure current_page is within bounds
+def _ensure_current_page_in_bounds() -> None:
+    global current_page, total_pages, icons
     if current_page >= total_pages:
         current_page = total_pages - 1
         icons = load_page_icons(current_page)
 
-    # process button inputs to switch between icons
+def _handle_input() -> None:
+    global active
     if io.BUTTON_C in io.pressed:
         active += 1
     if io.BUTTON_A in io.pressed:
@@ -88,50 +111,46 @@ def update():
         active -= 3
     if io.BUTTON_DOWN in io.pressed:
         active += 3
-    
-    # Handle wrapping and page changes
+
+def _handle_wrapping_and_pagination() -> None:
+    global active, current_page, total_pages, icons
     if active >= len(icons):
         if current_page < total_pages - 1:
-            # Move to next page
             current_page += 1
             icons = load_page_icons(current_page)
             active = 0
         else:
-            # Wrap to beginning
             active = 0
     elif active < 0:
         if current_page > 0:
-            # Move to previous page
             current_page -= 1
             icons = load_page_icons(current_page)
             active = len(icons) - 1
         else:
-            # Wrap to end
             active = len(icons) - 1
-    
-    # Launch app with error handling
+
+def _handle_app_launch() -> str | None:
     if io.BUTTON_B in io.pressed:
         app_idx = current_page * APPS_PER_PAGE + active
         if app_idx < len(apps):
             app_path = f"/system/apps/{apps[app_idx][1]}"
             try:
-                # Verify the app still exists before launching
                 if is_dir(app_path) and file_exists(f"{app_path}/__init__.py"):
                     return app_path
                 else:
                     print(f"Error: App {apps[app_idx][1]} not found or missing __init__.py")
             except Exception as e:
                 print(f"Error launching app {apps[app_idx][1]}: {e}")
+    return None
 
+def _draw_menu_ui() -> None:
     ui.draw_background()
     ui.draw_header()
 
-    # draw menu icons
+def _draw_icons_and_labels() -> None:
     for i in range(len(icons)):
         icons[i].activate(active == i)
         icons[i].draw()
-
-    # draw label for active menu icon
     if Icon.active_icon:
         label = f"{Icon.active_icon.name}"
         w, _ = screen.measure_text(label)
@@ -139,20 +158,20 @@ def update():
         screen.draw(shapes.rounded_rectangle(80 - (w / 2) - 4, 100, w + 8, 15, 4))
         screen.brush = brushes.color(0, 0, 0, 150)
         screen.text(label, 80 - (w / 2), 101)
-    
-    # draw page indicator if multiple pages
+
+def _draw_page_indicator() -> None:
     if total_pages > 1:
         page_label = f"{current_page + 1}/{total_pages}"
         w, _ = screen.measure_text(page_label)
         screen.brush = brushes.color(211, 250, 55, 150)
         screen.text(page_label, 160 - w - 5, 112)
 
+def _draw_fade_in() -> None:
+    global alpha
     if alpha <= MAX_ALPHA:
         screen.brush = brushes.color(0, 0, 0, 255 - alpha)
         screen.clear()
         alpha += 30
-
-    return None
 
 if __name__ == "__main__":
     run(update)

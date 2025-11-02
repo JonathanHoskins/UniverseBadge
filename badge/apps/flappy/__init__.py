@@ -11,15 +11,14 @@ sys.path.insert(0, "/system/apps/flappy")
 os.chdir("/system/apps/flappy")
 
 from badgeware import screen, Image, PixelFont, SpriteSheet, io, brushes, shapes, run
-from badge.common import FONT_ZIPLOCK, FONT_NOPE
 from mona import Mona
 from obstacle import Obstacle
 
 background = Image.load("assets/background.png")
 grass = Image.load("assets/grass.png")
 cloud = Image.load("assets/cloud.png")
-large_font = PixelFont.load(FONT_ZIPLOCK)
-small_font = PixelFont.load(FONT_NOPE)
+large_font = PixelFont.load("assets/fonts/ziplock.ppf")
+small_font = PixelFont.load("assets/fonts/nope.ppf")
 ghost = SpriteSheet("/system/assets/mona-sprites/mona-dead.png", 7, 1).animation()
 mona = None
 

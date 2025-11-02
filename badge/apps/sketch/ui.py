@@ -1,10 +1,11 @@
 import math
 from badgeware import screen, PixelFont, SpriteSheet, shapes, brushes, io, Image
+from badge.common import FONT_VEST
 
 screen.antialias = Image.X2
 canvas_area = (10, 15, 140, 85)
 
-font = PixelFont.load("/system/assets/fonts/vest.ppf")
+font = PixelFont.load(FONT_VEST)
 mona = SpriteSheet("/system/assets/mona-sprites/mona-dance.png", 6, 1).animation()
 
 

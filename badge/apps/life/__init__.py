@@ -5,8 +5,9 @@ themed colors, periodically injecting interesting patterns when stagnation is
 detected. The update loop is split into small, testable helpers.
 """
 from badgeware import screen, PixelFont, shapes, brushes, io, run, Matrix
-from badge.common import FONT_NOPE, GITHUB_DARK_BG
 import random
+
+GITHUB_DARK_BG = (13, 17, 23)
 
 # GitHub contribution graph colors (dark mode) - based on neighbor count
 NEIGHBOR_COLORS = [
@@ -37,7 +38,7 @@ GRID_WIDTH = 40  # 160 / 4
 GRID_HEIGHT = 30  # 120 / 4
 
 # Load font
-small_font = PixelFont.load(FONT_NOPE)
+small_font = PixelFont.load("assets/fonts/nope.ppf")
 
 # Pre-create shape for cells (reused for all cells)
 cell_rect = shapes.rectangle(0, 0, SQUARE_SIZE, SQUARE_SIZE)

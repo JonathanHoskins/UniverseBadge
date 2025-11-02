@@ -1,3 +1,13 @@
+"""Snake game with a GitHub-commits theme.
+
+Use the A/C/UP/DOWN buttons to steer. Eat the commit to grow and score.
+Wrap-around at edges is enabled; colliding with yourself ends the game.
+"""
+
+from __future__ import annotations
+
+from typing import List, Tuple
+
 from badgeware import screen, PixelFont, shapes, brushes, io, run
 import random
 
@@ -26,25 +36,31 @@ class GameState:
     GAME_OVER = 3
 
 class Snake:
-    def __init__(self):
+    """Simple snake with directional input and growth mechanics."""
+
+    def __init__(self) -> None:
         self.reset()
     
-    def reset(self):
+    def reset(self) -> None:
         # Start in the middle
         start_x = GRID_WIDTH // 2
         start_y = GRID_HEIGHT // 2
-        self.segments = [(start_x, start_y), (start_x - 1, start_y), (start_x - 2, start_y)]
-        self.direction = (1, 0)  # Moving right
-        self.next_direction = (1, 0)
-        self.grow_pending = 0
+        self.segments: List[Tuple[int, int]] = [
+            (start_x, start_y),
+            (start_x - 1, start_y),
+            (start_x - 2, start_y),
+        ]
+        self.direction: Tuple[int, int] = (1, 0)  # Moving right
+        self.next_direction: Tuple[int, int] = (1, 0)
+        self.grow_pending: int = 0
     
-    def set_direction(self, dx, dy):
+    def set_direction(self, dx: int, dy: int) -> None:
         # Prevent reversing direction
         current_dx, current_dy = self.direction
         if (dx, dy) != (-current_dx, -current_dy):
             self.next_direction = (dx, dy)
     
-    def update(self):
+    def update(self) -> bool:
         self.direction = self.next_direction
         
         # Calculate new head position
@@ -67,24 +83,26 @@ class Snake:
         
         return True
     
-    def grow(self):
+    def grow(self) -> None:
         self.grow_pending += 1
     
-    def draw(self):
+    def draw(self) -> None:
         screen.brush = brushes.color(*SNAKE_COLOR)
         for x, y in self.segments:
             screen.draw(shapes.rectangle(x * GRID_SIZE, y * GRID_SIZE, SQUARE_SIZE, SQUARE_SIZE))
 
 class Commit:
-    def __init__(self):
+    """Food for the snake; respawns at random positions/colors."""
+
+    def __init__(self) -> None:
         self.respawn()
     
-    def respawn(self):
+    def respawn(self) -> None:
         self.x = random.randint(0, GRID_WIDTH - 1)
         self.y = random.randint(0, GRID_HEIGHT - 1)
         self.color = random.choice(COMMIT_COLORS)
     
-    def draw(self):
+    def draw(self) -> None:
         screen.brush = brushes.color(*self.color)
         screen.draw(shapes.rectangle(self.x * GRID_SIZE, self.y * GRID_SIZE, SQUARE_SIZE, SQUARE_SIZE))
 
@@ -96,7 +114,7 @@ score = 0
 last_update = 0
 update_interval = 150  # milliseconds
 
-def update():
+def update() -> None:
     
     # Clear screen
     screen.brush = brushes.color(*BACKGROUND_COLOR)
@@ -109,7 +127,7 @@ def update():
     elif state == GameState.GAME_OVER:
         game_over()
 
-def intro():
+def intro() -> None:
     global state, score
     
     # Draw title
@@ -143,10 +161,7 @@ def intro():
         commit.respawn()
         score = 0
 
-def play():
-    global state, score, last_update
-    
-    # Handle input
+def _handle_play_input() -> None:
     if io.BUTTON_A in io.pressed:
         snake.set_direction(-1, 0)  # Left
     elif io.BUTTON_C in io.pressed:
@@ -155,16 +170,17 @@ def play():
         snake.set_direction(0, -1)  # Up
     elif io.BUTTON_DOWN in io.pressed:
         snake.set_direction(0, 1)   # Down
-    
+
+def play() -> None:
+    global state, score, last_update
+    _handle_play_input()
     # Update game logic
     if io.ticks - last_update > update_interval:
         last_update = io.ticks
-        
         # Update snake position
         if not snake.update():
             state = GameState.GAME_OVER
             return
-        
         # Check if snake ate the commit
         head = snake.segments[0]
         if head[0] == commit.x and head[1] == commit.y:
@@ -174,7 +190,6 @@ def play():
             # Make sure commit doesn't spawn on snake
             while (commit.x, commit.y) in snake.segments:
                 commit.respawn()
-    
     # Draw everything
     commit.draw()
     snake.draw()

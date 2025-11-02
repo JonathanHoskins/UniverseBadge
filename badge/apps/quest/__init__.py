@@ -1,9 +1,5 @@
-import sys
-import os
-
 sys.path.insert(0, "/system/apps/quest")
 os.chdir("/system/apps/quest")
-
 from badgeware import State, PixelFont, Image, brushes, screen, io, shapes, run
 from beacon import GithubUniverseBeacon
 from aye_arr.nec import NECReceiver
@@ -64,64 +60,55 @@ receiver = NECReceiver(21, 0, 0)    # Pin, PIO, SM
 receiver.bind(ir)
 receiver.start()
 
-def update():
-  global _last_task_completed_at
+def _draw_quest_grid():
+    screen.brush = brushes.color(35, 41, 37)
+    screen.draw(shapes.rectangle(0, 0, 160, 120))
+    ui.draw_status(state["completed"])
+    ui.draw_tiles(state["completed"])
 
-  # decode any ir events that have occurred
-  receiver.decode()
-
-  # clear the screen
-  screen.brush = brushes.color(35, 41, 37)
-  screen.draw(shapes.rectangle(0, 0, 160, 120))
-
-  # draw the quest tile grid
-  ui.draw_status(state["completed"])
-  ui.draw_tiles(state["completed"])
-
-  # if button pressed and we're showing a quest completed screen then dismiss it
-  if io.pressed and _last_task_completed_at:
-    _last_task_completed_at = None
-
-  if _last_task_completed_at:
-    # if you find a new location then show well done screen
+def _draw_completion_animation():
+    if not _last_task_completed_at:
+        return False
     width, height = 160, 120
     zoom_speed = 250
     if io.ticks - _last_task_completed_at < zoom_speed:
-      # for first 250ms of well done screen animate it zooming in
-      alpha = ((io.ticks - _last_task_completed_at) / zoom_speed)
-      zoom = ((io.ticks - _last_task_completed_at) / zoom_speed) * 10
-      width *= (zoom / 10)
-      height *= (zoom / 10)
-      splash.alpha = int(alpha * 255)
-      screen.scale_blit(splash, 80 - width / 2, 60 - height / 2, width, height)
+        alpha = ((io.ticks - _last_task_completed_at) / zoom_speed)
+        zoom = ((io.ticks - _last_task_completed_at) / zoom_speed) * 10
+        width *= (zoom / 10)
+        height *= (zoom / 10)
+        splash.alpha = int(alpha * 255)
+        screen.scale_blit(splash, 80 - width / 2, 60 - height / 2, width, height)
     else:
-      splash.alpha = 255
-      screen.blit(splash, 0, 0)
+        splash.alpha = 255
+        screen.blit(splash, 0, 0)
+        label = _last_task_completed.name
+        message = "Location Unlocked!"
+        if len(state["completed"]) == len(quests):
+            message = "Side Quest Complete!"
+        screen.font = large_font
+        lw, _ = screen.measure_text(label)
+        screen.font = small_font
+        mw, _ = screen.measure_text(message)
+        screen.brush = brushes.color(46, 160, 67, 200)
+        lw_corners = (4, 4, 0, 0) if lw < mw else (4, 4, 4, 4)
+        mw_corners = (4, 4, 4, 4) if lw < mw else (0, 0, 4, 4)
+        screen.draw(shapes.rounded_rectangle(80 - (lw / 2) - 4, 2, lw + 8, 18, *lw_corners))
+        screen.draw(shapes.rounded_rectangle(80 - (mw / 2) - 4, 20 , mw + 8, 12, *mw_corners))
+        screen.brush = brushes.color(255, 255, 255, 255)
+        screen.font = large_font
+        screen.text(label, 80 - (lw / 2), 2)
+        screen.font = small_font
+        screen.text(message, 80 - (mw / 2), 19)
+    return True
 
-      label = _last_task_completed.name
-      message = "Location Unlocked!"
-      if len(state["completed"]) == len(quests):
-        message = "Side Quest Complete!"
-
-      screen.font = large_font
-      lw, _ = screen.measure_text(label)
-      screen.font = small_font
-      mw, _ = screen.measure_text(message)
-
-      # draw message bubble
-      screen.brush = brushes.color(46, 160, 67, 200)
-      lw_corners = (4, 4, 0, 0) if lw < mw else (4, 4, 4, 4)
-      mw_corners = (4, 4, 4, 4) if lw < mw else (0, 0, 4, 4)
-      screen.draw(shapes.rounded_rectangle(80 - (lw / 2) - 4, 2, lw + 8, 18, *lw_corners))
-      screen.draw(shapes.rounded_rectangle(80 - (mw / 2) - 4, 20 , mw + 8, 12, *mw_corners))
-
-      # draw task label and message
-      screen.brush = brushes.color(255, 255, 255, 255)
-      screen.font = large_font
-      screen.text(label, 80 - (lw / 2), 2)
-      screen.font = small_font
-      screen.text(message, 80 - (mw / 2), 19)
-
+def update():
+    global _last_task_completed_at
+    receiver.decode()
+    if io.pressed and _last_task_completed_at:
+        _last_task_completed_at = None
+    if _draw_completion_animation():
+        return
+    _draw_quest_grid()
 
 if __name__ == "__main__":
     run(update)

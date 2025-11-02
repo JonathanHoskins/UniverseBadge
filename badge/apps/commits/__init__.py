@@ -1,6 +1,10 @@
 from badgeware import screen, PixelFont, shapes, brushes, io, run
 import random
 
+# Screen dimensions
+SCREEN_WIDTH = 296
+SCREEN_HEIGHT = 128
+
 # GitHub contribution graph colors (dark mode)
 COMMIT_COLORS = [
     (25, 108, 46),    # #196c2e - dark green
@@ -16,10 +20,6 @@ BACKGROUND_COLOR = (13, 17, 23)  # Dark GitHub background
 SQUARE_SIZE = 6  # Size of each square
 SQUARE_GAP = 1   # Gap between squares
 UNIT = SQUARE_SIZE + SQUARE_GAP  # Total unit size (7 pixels)
-
-# Screen dimensions
-SCREEN_WIDTH = 160
-SCREEN_HEIGHT = 120
 
 # Brick configuration
 BRICK_COLS = 22  # Fill screen width (160 / 7 ≈ 22)
@@ -276,7 +276,7 @@ def create_bricks():
             color = random.choice(COMMIT_COLORS)
             bricks.append(Brick(x, y, color))
 
-def update():
+def update() -> None:
     
     # Clear screen
     screen.brush = brushes.color(*BACKGROUND_COLOR)
@@ -291,7 +291,7 @@ def update():
     elif state == GameState.WIN:
         win_screen()
 
-def intro():
+def intro() -> None:
     global state, lives, score, paddle
     # Draw title
     screen.font = small_font
@@ -339,72 +339,79 @@ def intro():
         paddle = Paddle()
         ball.reset()
 
-def play():
+def play() -> None:
     global state, lives, score, auto_play, paddle, ball
-    
-    # Toggle auto-play mode with DOWN button
-    if io.BUTTON_DOWN in io.pressed:
-        auto_play = not auto_play
-    
-    # Update game objects - check if manual input cancels auto mode
-    manual_input = paddle.update(ball, auto_play, bricks)
+    _toggle_auto_play()
+    manual_input = _update_paddle()
     if manual_input and auto_play:
         auto_play = False
-    
-    if not ball.update(paddle, bricks, auto_play):
-        if auto_play:
-            # Auto mode: restart without losing a life
-            score = 0
-            create_bricks()
-            paddle = Paddle()
-            ball = Ball()
+    ball_result = _update_ball()
+    if not ball_result:
+        _handle_ball_lost()
+    _check_and_handle_win()
+    _update_score()
+    _draw_game_objects_and_ui()
+
+
+# --- Helper functions for play() ---
+def _toggle_auto_play() -> None:
+    global auto_play
+    if io.BUTTON_DOWN in io.pressed:
+        auto_play = not auto_play
+
+def _update_paddle():
+    return paddle.update(ball, auto_play, bricks)
+
+def _update_ball():
+    return ball.update(paddle, bricks, auto_play)
+
+def _handle_ball_lost() -> None:
+    global state, lives, score, paddle, ball
+    if auto_play:
+        score = 0
+        create_bricks()
+        paddle = Paddle()
+        ball = Ball()
+    else:
+        lives -= 1
+        if lives <= 0:
+            state = GameState.GAME_OVER
         else:
-            # Manual mode: lose a life
-            lives -= 1
-            if lives <= 0:
-                state = GameState.GAME_OVER
-            else:
-                ball.reset()
-    
-    # Check for win
+            ball.reset()
+
+def _check_and_handle_win() -> None:
+    global state, score, paddle, ball
     if all(not brick.alive for brick in bricks):
         if auto_play:
-            # Auto-restart: reset game with auto mode still enabled
             score = 0
             create_bricks()
             paddle = Paddle()
             ball = Ball()
-            # auto_play remains True
         else:
             state = GameState.WIN
-    
-    # Count score
+
+def _update_score() -> None:
+    global score
     score = sum(1 for brick in bricks if not brick.alive)
-    
-    # Draw game objects
+
+def _draw_game_objects_and_ui() -> None:
     for brick in bricks:
         brick.draw()
-    
     paddle.draw()
     ball.draw()
-    
-    # Draw UI
     screen.font = small_font
     screen.brush = brushes.color(255, 255, 255)
     screen.text(f"Lives: {lives}", 2, 2)
-    
     score_text = f"Score: {score}"
     w, _ = screen.measure_text(score_text)
     screen.text(score_text, SCREEN_WIDTH - w - 2, 2)
-    
-    # Show green 'A' when in auto-play mode
     if auto_play:
         auto_text = "A"
         w, _ = screen.measure_text(auto_text)
         screen.brush = brushes.color(*PADDLE_COLOR)
         screen.text(auto_text, 80 - (w // 2), 2)
 
-def game_over():
+def game_over() -> None:
     global state
     
     # Draw game over screen
@@ -428,7 +435,7 @@ def game_over():
     if io.BUTTON_UP in io.pressed or io.BUTTON_B in io.pressed:
         state = GameState.INTRO
 
-def win_screen():
+def win_screen() -> None:
     global state
     
     # Draw win screen

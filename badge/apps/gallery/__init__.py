@@ -1,3 +1,9 @@
+"""Image gallery app with thumbnails and smooth scrolling.
+
+Loads images and matching thumbnails from local folders and provides a
+simple, smooth-scrolling thumbnail strip with a title overlay.
+"""
+
 import sys
 import os
 
@@ -27,26 +33,28 @@ for file in os.listdir("images"):
 # load the thumbnail images to match
 thumbnails = []
 for file in files:
-    thumbnails.append(Image.load(f"thumbnails/{file["name"]}"))
+    # Use single quotes inside f-string to avoid quoting issues
+    thumbnails.append(Image.load(f'thumbnails/{file["name"]}'))
 
 # given a gallery image index it clamps it into the range of available images
 
 
-def clamp_index(index):
+def clamp_index(index: int) -> int:
+    """Clamp an index into the range of available images (wrap-around)."""
     return index % len(files)
 
 # load the main image based on the gallery index provided
 
 
-def load_image(index):
+def load_image(index: int) -> None:
     global image
     index = clamp_index(index)
-    image = Image.load(f"images/{files[index]["name"]}")
+    image = Image.load(f'images/{files[index]["name"]}')
 
 # render the thumbnail strip
 
 
-def draw_thumbnails():
+def draw_thumbnails() -> None:
     if ui_hidden:
         return
 
@@ -90,51 +98,64 @@ thumbnail_scroll = index
 image_changed_at = None
 
 
-def update():
+def update() -> None:
+    """Main update: handle input, animate thumbnails, and draw UI."""
     global index, thumbnail_scroll, ui_hidden, image_changed_at
+    _handle_input()
+    _auto_hide_ui()
+    _draw_current_image()
+    _smooth_scroll_thumbnails()
+    draw_thumbnails()
+    _draw_title_overlay()
 
-    # if the user presses left or right then switch image
+
+# --- Helper functions ---
+def _handle_input() -> None:
+    """Respond to A/C navigation and B to toggle UI visibility."""
+    global index, ui_hidden, image_changed_at
     if io.BUTTON_A in io.pressed:
         index -= 1
         ui_hidden = False
         image_changed_at = io.ticks
         load_image(index)
-
     if io.BUTTON_C in io.pressed:
         index += 1
         ui_hidden = False
         image_changed_at = io.ticks
         load_image(index)
-
     if io.BUTTON_B in io.pressed:
         ui_hidden = not ui_hidden
         image_changed_at = io.ticks
 
+def _auto_hide_ui() -> None:
+    """Hide UI after a brief delay since last interaction."""
+    global ui_hidden
     if image_changed_at and (io.ticks - image_changed_at) > 2000:
         ui_hidden = True
 
-    # draw the currently selected image
+def _draw_current_image() -> None:
+    """Draw the active image full-screen."""
     screen.blit(image, 0, 0)
 
-    # smooth scroll towards the newly selected image
+def _smooth_scroll_thumbnails() -> None:
+    """Ease the thumbnail_scroll value toward the current index."""
+    global thumbnail_scroll
     if thumbnail_scroll < index:
         thumbnail_scroll = min(thumbnail_scroll + 0.1, index)
     if thumbnail_scroll > index:
         thumbnail_scroll = max(thumbnail_scroll - 0.1, index)
 
-    # draw the thumbnail ui
-    draw_thumbnails()
-
+def _draw_title_overlay() -> None:
+    """Draw a translucent bar and centered title text when UI is visible."""
+    if ui_hidden:
+        return
     title = files[clamp_index(index)]["title"]
     width, _ = screen.measure_text(title)
-
-    if not ui_hidden:
-        screen.brush = brushes.color(0, 0, 0, 100)
-        screen.draw(shapes.rounded_rectangle(
-            80 - (width / 2) - 8, -6, width + 16, 22, 6))
-        screen.text(title, 80 - (width / 2) + 1, 1)
-        screen.brush = brushes.color(255, 255, 255)
-        screen.text(title, 80 - (width / 2), 0)
+    screen.brush = brushes.color(0, 0, 0, 100)
+    screen.draw(shapes.rounded_rectangle(80 - (width / 2) - 8, -6, width + 16, 22, 6))
+    screen.text(title, 80 - (width / 2) + 1, 1)
+    screen.brush = brushes.color(255, 255, 255)
+    screen.text(title, 80 - (width / 2), 0)
 
 
 if __name__ == "__main__":
