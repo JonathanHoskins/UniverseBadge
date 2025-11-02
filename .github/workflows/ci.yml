@@ -33,4 +33,5 @@ jobs:
 
       - name: Mypy (types)
         run: |
-          mypy .
+          # Configuration in mypy.ini and pyproject.toml
+          mypy badge/ tests/
